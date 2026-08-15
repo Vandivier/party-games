@@ -16,6 +16,7 @@ equipment and abilities for strategy.
 - A hero deals its face value in damage, plus bonuses.
 - Club cards are equipment. A hero can wear any number of clubs, which boost
   damage and persist across turns.
+- You cannot attack on the same turn you equip a club.
 - Hearts are healing spells. When a player is attacked, they can discard a heart
   to nullify the attack.
 - Diamonds are power spells. When a player attacks, they can discard a diamond to

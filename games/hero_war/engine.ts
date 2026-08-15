@@ -21,8 +21,10 @@ import type {
   LegalAction,
 } from './types';
 
-/** Every hero enters play with the same hit points, whatever its face value. */
-export const HERO_HP = 20;
+/** A hero's face value is both its damage and its hit points. */
+export function heroHitPoints(card: Card): number {
+  return card.value;
+}
 export const HAND_SIZE = 5;
 const MAX_MULLIGANS = 25;
 /** A club this big is worth spending a spade to destroy. */
@@ -49,7 +51,7 @@ export function createGame({ players, seed, deckCount }: CreateGameOptions): Her
       equipment: [],
       out: false,
     })),
-    turn: { playerIndex: 0, drawn: false, played: false, attacked: false },
+    turn: { playerIndex: 0, drawn: false, played: false, equipped: false, attacked: false },
     pendingAttack: null,
     pendingHero: null,
     phase: 'setup',
@@ -160,7 +162,7 @@ export function legalActions(state: HeroWarState): LegalAction[] {
     return player.hand.filter(isFace).map((card) => ({
       type: 'playHero' as const,
       cardId: card.id,
-      label: `Play ${card.label} as your hero — ${card.value} damage, ${HERO_HP} hp`,
+      label: `Play ${card.label} as your hero — ${card.value} damage, ${heroHitPoints(card)} hp`,
     }));
   }
   if (state.phase === 'setup') return [];
@@ -170,7 +172,7 @@ export function legalActions(state: HeroWarState): LegalAction[] {
 
   if (!turn.drawn) actions.push({ type: 'draw', label: 'Draw a card' });
 
-  if (!turn.played) {
+  if (!turn.played && !turn.attacked) {
     for (const card of sortHand(player.hand)) {
       if (card.suit !== 'clubs') continue;
       actions.push({
@@ -201,7 +203,7 @@ export function legalActions(state: HeroWarState): LegalAction[] {
     }
   }
 
-  if (!turn.attacked) {
+  if (!turn.attacked && !turn.equipped) {
     for (const opponent of state.players) {
       if (opponent.out || opponent.index === player.index || !opponent.hero) continue;
       actions.push({
@@ -233,8 +235,9 @@ export function act(state: HeroWarState, action: HeroWarAction): ActionResult {
       if (!card) return fail('That card is not in your hand.');
       if (!isFace(card)) return fail('Only face cards can be played as a hero.');
       takeFromHand(player, card.id);
-      player.hero = { card, hp: HERO_HP, maxHp: HERO_HP };
-      log(state, `${player.name} takes the field with ${card.label} (${HERO_HP} hp).`);
+      const hp = heroHitPoints(card);
+      player.hero = { card, hp, maxHp: hp };
+      log(state, `${player.name} takes the field with ${card.label} (${hp} hp).`);
       if (state.pendingHero === player.index) state.pendingHero = null;
       if (state.phase === 'setup' && state.players.every((p) => p.out || p.hero)) {
         state.phase = 'play';
@@ -260,12 +263,14 @@ export function act(state: HeroWarState, action: HeroWarAction): ActionResult {
     case 'equip': {
       if (state.phase !== 'play') return fail('Play a hero first.');
       if (turn.played) return fail('You have already played a card this turn.');
+      if (turn.attacked) return fail('You cannot equip a club on a turn you attacked.');
       const card = player.hand.find((c) => c.id === action.cardId);
       if (!card) return fail('That card is not in your hand.');
       if (card.suit !== 'clubs') return fail('Only clubs can be equipped.');
       takeFromHand(player, card.id);
       player.equipment.push(card);
       turn.played = true;
+      turn.equipped = true;
       log(state, `${player.name} equips ${card.label} (+${card.value} damage).`);
       return ok();
     }
@@ -305,6 +310,7 @@ export function act(state: HeroWarState, action: HeroWarAction): ActionResult {
     case 'attack': {
       if (state.phase !== 'play') return fail('Play a hero first.');
       if (turn.attacked) return fail('You have already attacked this turn.');
+      if (turn.equipped) return fail('You cannot attack on the same turn you equip a club.');
       if (!player.hero) return fail('You have no hero to attack with.');
       const target = playerAt(state, action.targetIndex);
       if (!target || target.out || target.index === player.index) return fail('Invalid target.');
@@ -434,7 +440,7 @@ function advanceTurn(state: HeroWarState): void {
     const next = (state.turn.playerIndex + step) % count;
     const player = state.players[next];
     if (!player || player.out) continue;
-    state.turn = { playerIndex: next, drawn: false, played: false, attacked: false };
+    state.turn = { playerIndex: next, drawn: false, played: false, equipped: false, attacked: false };
     log(state, `--- ${player.name}'s turn ---`);
     return;
   }

@@ -13,8 +13,8 @@ import {
 } from './engine';
 import type { DefenseChoice, HeroWarAction, HeroWarPlayer, HeroWarState, LegalAction } from './types';
 
-/** A hit this big is worth a heart even when the hero would survive it. */
-const HEART_THRESHOLD = 12;
+/** With hearts to spare, nullify anything that takes half a hero or more. */
+const SPARE_HEARTS = 3;
 /** Below this many cards, cycling a spade beats holding it. */
 const THIN_HAND = 4;
 
@@ -42,11 +42,14 @@ export function botAction(state: HeroWarState): HeroWarAction | null {
   const spadeCount = me.hand.filter((card) => card.suit === 'spades').length;
   if (sabotage && (sabotage.value >= SABOTAGE_THRESHOLD || spadeCount >= 2)) return sabotage.action;
 
-  const equip = byCardValueDesc(me, actions.filter(is('equip')))[0];
-  if (equip) return equip;
-
+  // Equipping costs this turn's attack, so a kill on the table always wins out.
   const attack = planAttack(state, me, actions);
-  if (attack) return attack;
+  if (attack?.lethal) return attack.action;
+
+  const equip = byCardValueDesc(me, actions.filter(is('equip')))[0];
+  if (equip && worthTheLostAttack(state, me, equip.cardId)) return equip;
+
+  if (attack) return attack.action;
 
   // Nothing better to do with a spade than cycle it into a live card.
   const trade = actions.find(is('spadeTrade'));
@@ -60,7 +63,7 @@ function planAttack(
   state: HeroWarState,
   me: HeroWarPlayer,
   actions: LegalAction[],
-): HeroWarAction | null {
+): { action: HeroWarAction; lethal: boolean } | null {
   const attacks = actions.filter(is('attack'));
   if (attacks.length === 0) return null;
 
@@ -70,7 +73,7 @@ function planAttack(
     .sort((a, b) => a.hp - b.hp);
 
   const finisher = targets.find((target) => base >= target.hp);
-  if (finisher) return { ...finisher.action, boostCardIds: [] };
+  if (finisher) return { action: { ...finisher.action, boostCardIds: [] }, lethal: true };
 
   const weakest = targets[0];
   if (!weakest) return null;
@@ -85,11 +88,27 @@ function planAttack(
     boosts.push(diamond);
     damage += diamond.value;
   }
-  const worthIt = damage >= weakest.hp;
-  return { ...weakest.action, boostCardIds: worthIt ? boosts.map((card) => card.id) : [] };
+  const lethal = damage >= weakest.hp;
+  return {
+    action: { ...weakest.action, boostCardIds: lethal ? boosts.map((card) => card.id) : [] },
+    lethal,
+  };
 }
 
-/** Nullify anything lethal; otherwise spend a heart only on a big hit. */
+/** Only give up an attack for gear that makes the next swing a killing one. */
+function worthTheLostAttack(state: HeroWarState, me: HeroWarPlayer, cardId: string): boolean {
+  const club = me.hand.find((card) => card.id === cardId);
+  if (!club) return false;
+  const liveHeroes = state.players
+    .filter((player) => !player.out && player.index !== me.index && player.hero)
+    .map((player) => player.hero!.hp);
+  if (liveHeroes.length === 0) return true; // nothing to swing at anyway
+  const weakest = Math.min(...liveHeroes);
+  const base = attackDamage(me);
+  return base < weakest && base + club.value >= weakest;
+}
+
+/** Nullify anything lethal; otherwise spend a heart only when they are cheap. */
 export function botDefense(state: HeroWarState): DefenseChoice {
   const attack = state.pendingAttack;
   if (!attack) return { cardId: null };
@@ -103,7 +122,8 @@ export function botDefense(state: HeroWarState): DefenseChoice {
   if (!cheapest) return { cardId: null };
 
   const lethal = attack.damage >= defender.hero.hp;
-  const worthBurning = attack.damage >= HEART_THRESHOLD && hearts.length >= 2;
+  const worthBurning =
+    hearts.length >= SPARE_HEARTS && attack.damage * 2 >= defender.hero.maxHp;
   return lethal || worthBurning ? { cardId: cheapest.id } : { cardId: null };
 }
 

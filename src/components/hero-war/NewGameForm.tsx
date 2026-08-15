@@ -8,8 +8,9 @@ interface Seat {
   isBot: boolean;
 }
 
+// Names read back in the log ("Player 1's turn"), so avoid pronouns here.
 const DEFAULT_SEATS: Seat[] = [
-  { name: 'You', isBot: false },
+  { name: 'Player 1', isBot: false },
   { name: 'Bot', isBot: true },
 ];
 

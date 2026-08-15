@@ -290,6 +290,12 @@ label.inline {
   transform: translateY(-3px);
 }
 
+/* A card that cannot be spent right now is still a card, not a dead tile. */
+.card-button:disabled {
+  opacity: 0.82;
+  cursor: default;
+}
+
 .card-button.selected .card {
   outline: 3px solid var(--gold);
   outline-offset: 2px;

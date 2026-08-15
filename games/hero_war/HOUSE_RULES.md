@@ -14,9 +14,13 @@ a default choice, not part of the authored rules.
 
 ## Heroes
 
-- Every hero enters play with **20 hit points**, regardless of its face value.
+- A hero's face value is both its damage and its hit points: J = 11, Q = 12,
+  K = 13. A Jack deals 11 and dies to 11 damage.
 - Damage accumulates. A hero that has taken damage stays damaged across turns;
   nothing heals a hero (hearts nullify attacks, they do not restore hit points).
+- Because a bare hero already deals 11–13, most clean hits kill outright. Hearts
+  are the real defense; equipment decides who wins the trades that hearts do not
+  stop.
 - A hero dies when its hit points reach 0.
 - A replacement hero is played immediately when the old one dies. It enters at
   full hit points and does not consume the player's play action for the turn.
@@ -40,7 +44,10 @@ On your turn, in any order:
 2. **Play** — play one card: a hero (only if you have none in play) or a club as
    equipment. Once per turn.
 3. **Spade actions** — any number, each discarding one spade (see below).
-4. **Attack** — attack once, or pass.
+4. **Attack** — attack once, or pass. Equipping a club and attacking are mutually
+   exclusive on the same turn: whichever you do first rules the other out. This
+   applies to equipment only — fielding a hero, drawing, and spade actions leave
+   your attack intact.
 
 Ending your turn passes play to the next living player.
 

@@ -37,6 +37,8 @@ export interface TurnState {
   playerIndex: number;
   drawn: boolean;
   played: boolean;
+  /** Equipping locks out this turn's attack, and vice versa. */
+  equipped: boolean;
   attacked: boolean;
 }
 

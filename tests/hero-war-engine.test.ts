@@ -6,7 +6,7 @@ import {
   createGame,
   currentActor,
   HAND_SIZE,
-  HERO_HP,
+  heroHitPoints,
   legalActions,
   resolveDefense,
 } from '@games/hero_war/engine';
@@ -71,8 +71,23 @@ describe('setup', () => {
     state.players[0]!.hand = cards('5♦', 'Q♣');
     expect(act(state, { type: 'playHero', cardId: card('5♦').id }).ok).toBe(false);
     expect(act(state, { type: 'playHero', cardId: card('Q♣').id }).ok).toBe(true);
-    expect(state.players[0]!.hero).toMatchObject({ hp: HERO_HP, maxHp: HERO_HP });
+    expect(state.players[0]!.hero).toMatchObject({ hp: 12, maxHp: 12 });
     expect(state.players[0]!.hero!.card.label).toBe('Q♣');
+  });
+
+  it('gives a hero hit points equal to its face value', () => {
+    for (const [label, value] of [
+      ['J♠', 11],
+      ['Q♠', 12],
+      ['K♠', 13],
+    ] as const) {
+      const state = table();
+      state.players[0]!.hand = cards(label);
+      act(state, { type: 'playHero', cardId: card(label).id });
+      expect(heroHitPoints(card(label))).toBe(value);
+      expect(state.players[0]!.hero).toMatchObject({ hp: value, maxHp: value });
+      expect(attackDamage(state.players[0]!)).toBe(value);
+    }
   });
 
   it('waits for every seat to field a hero before play starts', () => {
@@ -144,6 +159,42 @@ describe('turn actions', () => {
     );
   });
 
+  it('will not let you attack on the turn you equipped a club', () => {
+    const state = staged(['7♣'], ['3♠']);
+    expect(act(state, { type: 'equip', cardId: card('7♣').id }).ok).toBe(true);
+    expect(legalActions(state).some((action) => action.type === 'attack')).toBe(false);
+
+    const result = act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/same turn you equip/);
+    expect(state.pendingAttack).toBeNull();
+
+    // The gear is live again on the next turn around.
+    act(state, { type: 'endTurn' });
+    act(state, { type: 'endTurn' });
+    expect(act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] }).ok).toBe(true);
+    expect(state.pendingAttack!.damage).toBe(13 + 7);
+  });
+
+  it('will not let you equip a club on the turn you attacked', () => {
+    const state = staged(['7♣'], ['3♠'], 'J♠', 'K♥');
+    expect(act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] }).ok).toBe(true);
+    resolveDefense(state, { cardId: null });
+    expect(legalActions(state).some((action) => action.type === 'equip')).toBe(false);
+
+    const result = act(state, { type: 'equip', cardId: card('7♣').id });
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/turn you attacked/);
+    expect(state.players[0]!.equipment).toHaveLength(0);
+  });
+
+  it('leaves the attack intact after drawing, spades, and fielding a hero', () => {
+    const state = staged(['2♠'], ['3♠']);
+    act(state, { type: 'draw' });
+    act(state, { type: 'spadeTrade', cardId: card('2♠').id });
+    expect(legalActions(state).some((action) => action.type === 'attack')).toBe(true);
+  });
+
   it('advances the turn to the next living player', () => {
     const state = staged(['2♠'], ['3♠']);
     expect(state.turn.playerIndex).toBe(0);
@@ -164,8 +215,8 @@ describe('turn actions', () => {
 
 describe('attacks and defense', () => {
   it('deals hero value plus equipment plus diamonds', () => {
-    const state = staged(['7♣', '5♦', '3♦'], ['2♠']);
-    act(state, { type: 'equip', cardId: card('7♣').id });
+    const state = staged(['5♦', '3♦'], ['2♠']);
+    state.players[0]!.equipment = cards('7♣'); // equipped on an earlier turn
     const result = act(state, {
       type: 'attack',
       targetIndex: 1,
@@ -189,7 +240,7 @@ describe('attacks and defense', () => {
   });
 
   it('allows only one attack per turn', () => {
-    const state = staged([], ['2♠']);
+    const state = staged([], ['2♠'], 'J♠', 'K♥'); // 11 damage leaves the 13 hp hero standing
     act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] });
     resolveDefense(state, { cardId: null });
     expect(act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] }).ok).toBe(false);
@@ -199,7 +250,7 @@ describe('attacks and defense', () => {
     const state = staged([], ['4♥']);
     act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] });
     expect(resolveDefense(state, { cardId: card('4♥').id }).ok).toBe(true);
-    expect(state.players[1]!.hero!.hp).toBe(HERO_HP);
+    expect(state.players[1]!.hero!.hp).toBe(11);
     expect(state.players[1]!.hand.map((entry) => entry.label)).not.toContain('4♥');
     expect(state.discard.map((entry) => entry.label)).toContain('4♥');
   });
@@ -212,10 +263,10 @@ describe('attacks and defense', () => {
   });
 
   it('applies damage that accumulates across attacks', () => {
-    const state = staged([], []);
+    const state = staged([], [], 'J♠', 'K♥'); // 11 damage into a 13 hp hero
     act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] });
     resolveDefense(state, { cardId: null });
-    expect(state.players[1]!.hero!.hp).toBe(HERO_HP - 13);
+    expect(state.players[1]!.hero!.hp).toBe(13 - 11);
 
     act(state, { type: 'endTurn' });
     act(state, { type: 'endTurn' });
@@ -236,7 +287,7 @@ describe('attacks and defense', () => {
     expect(legalActions(state).map((action) => action.type)).toEqual(['playHero']);
 
     expect(act(state, { type: 'playHero', cardId: card('Q♦').id }).ok).toBe(true);
-    expect(state.players[1]!.hero!.hp).toBe(HERO_HP);
+    expect(state.players[1]!.hero!.hp).toBe(12);
     expect(state.pendingHero).toBeNull();
     expect(currentActor(state)).toBe(0);
   });

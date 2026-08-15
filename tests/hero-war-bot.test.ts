@@ -40,43 +40,43 @@ describe('bot', () => {
 
   it('spends the fewest diamonds that finish a hero off', () => {
     const state = createGame({ players: [{ name: 'A', isBot: true }, { name: 'B' }], seed: 'boost' });
-    state.players[0]!.hand = cards('K♠');
-    state.players[1]!.hand = cards('J♥');
-    act(state, { type: 'playHero', cardId: card('K♠').id });
-    act(state, { type: 'playHero', cardId: card('J♥').id });
+    state.players[0]!.hand = cards('J♠');
+    state.players[1]!.hand = cards('K♥');
+    act(state, { type: 'playHero', cardId: card('J♠').id });
+    act(state, { type: 'playHero', cardId: card('K♥').id });
     state.players[0]!.hand = cards('9♦', '2♦', '7♦');
     state.turn.drawn = true;
     state.turn.played = true;
 
     const action = botAction(state);
     expect(action?.type).toBe('attack');
-    // 13 from the hero needs 7 more to clear 20 hp: the 9 alone does it.
+    // 11 from the hero needs 2 more to clear 13 hp: the biggest diamond alone does it.
     expect(action).toMatchObject({ targetIndex: 1, boostCardIds: [card('9♦').id] });
   });
 
   it('does not waste diamonds when the hit cannot kill', () => {
     const state = createGame({ players: [{ name: 'A', isBot: true }, { name: 'B' }], seed: 'nokill' });
     state.players[0]!.hand = cards('J♠');
-    state.players[1]!.hand = cards('J♥');
+    state.players[1]!.hand = cards('K♥');
     act(state, { type: 'playHero', cardId: card('J♠').id });
-    act(state, { type: 'playHero', cardId: card('J♥').id });
-    state.players[0]!.hand = cards('2♦');
+    act(state, { type: 'playHero', cardId: card('K♥').id });
+    state.players[0]!.hand = cards('A♦'); // 11 + 1 is still short of 13
     state.turn.drawn = true;
     state.turn.played = true;
 
     expect(botAction(state)).toMatchObject({ type: 'attack', boostCardIds: [] });
   });
 
-  it('burns a heart on a lethal hit and swallows a small one', () => {
+  it('burns a heart on a lethal hit and swallows a survivable one', () => {
     const state = createGame({ players: [{ name: 'A' }, { name: 'B', isBot: true }], seed: 'heal' });
-    state.players[0]!.hand = cards('K♠');
-    state.players[1]!.hand = cards('J♥');
-    act(state, { type: 'playHero', cardId: card('K♠').id });
-    act(state, { type: 'playHero', cardId: card('J♥').id });
+    state.players[0]!.hand = cards('J♠');
+    state.players[1]!.hand = cards('K♥');
+    act(state, { type: 'playHero', cardId: card('J♠').id });
+    act(state, { type: 'playHero', cardId: card('K♥').id });
     state.players[1]!.hand = cards('3♥');
 
     act(state, { type: 'attack', targetIndex: 1, boostCardIds: [] });
-    expect(botDefense(state)).toEqual({ cardId: null }); // 13 damage, 20 hp: survivable
+    expect(botDefense(state)).toEqual({ cardId: null }); // 11 damage into 13 hp: survivable
 
     resolveDefense(state, { cardId: null });
     act(state, { type: 'endTurn' });
