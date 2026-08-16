@@ -158,6 +158,12 @@ p.lede {
   border-radius: 999px;
   padding: 0.1rem 0.55rem;
   color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.tag.soon {
+  border-color: rgba(232, 195, 122, 0.55);
+  color: var(--gold);
 }
 
 /* ------------------------------------------------------------------ controls */

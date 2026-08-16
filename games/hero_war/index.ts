@@ -11,6 +11,7 @@ export const heroWar: GameDefinition = {
   props: ['1–2 standard poker decks'],
   rulesPath: 'games/hero_war/RULES.md',
   href: '/hero-war',
+  docsHref: '/hero-war/rules',
   status: 'playable',
 };
 

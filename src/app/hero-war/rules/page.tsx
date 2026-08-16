@@ -1,21 +1,15 @@
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import Link from 'next/link';
 import { Markdown } from '@/lib/markdown';
+import { readGameDoc } from '@/lib/game-docs';
 
 export const metadata = {
   title: 'Hero War rules · Party Games',
 };
 
-/** The rules files in the repo are the single source of truth — read them directly. */
-async function readRules(file: string): Promise<string> {
-  return readFile(path.join(process.cwd(), 'games', 'hero_war', file), 'utf8');
-}
-
 export default async function HeroWarRulesPage() {
   const [rules, houseRules] = await Promise.all([
-    readRules('RULES.md'),
-    readRules('HOUSE_RULES.md'),
+    readGameDoc('games/hero_war/RULES.md'),
+    readGameDoc('games/hero_war/HOUSE_RULES.md'),
   ]);
 
   return (

@@ -6,6 +6,10 @@ paper — plus a web app that lets you play them here, against a bot or a friend
 **Playable now:** [Hero War](games/hero_war/RULES.md) — War with a hero on the field. Face cards
 fight, clubs are equipment, hearts nullify, diamonds burst, spades sabotage.
 
+**Planned:** [Magic Hero War](games/magic_hero_war/CONCEPT.md) — Hero War gone wide: spells, a
+party of heroes, three or more players, and a deck map catalogue that turns ordinary poker cards
+into distinct, power-balanced decks. Concept only, nothing implemented.
+
 ## Quickstart
 
 ```bash

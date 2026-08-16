@@ -15,17 +15,22 @@ export default function LobbyPage() {
           <article key={game.id} className="game-card">
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <h2>{game.name}</h2>
-              <span className="tag">{game.status}</span>
+              <span className={`tag${game.status === 'planned' ? ' soon' : ''}`}>
+                {game.status === 'planned' ? 'coming soon' : 'playable'}
+              </span>
             </div>
             <p className="muted small">{game.blurb}</p>
             <p className="small muted">
               {game.minPlayers}–{game.maxPlayers} players · {game.props.join(', ')}
             </p>
-            {game.href ? (
-              <div className="row">
-                <Link href={game.href}>Play →</Link>
-              </div>
-            ) : null}
+            <div className="row" style={{ marginTop: 'auto' }}>
+              {game.href ? <Link href={game.href}>Play →</Link> : null}
+              {game.docsHref ? (
+                <Link href={game.docsHref}>
+                  {game.status === 'planned' ? 'Read the concept →' : 'Rules →'}
+                </Link>
+              ) : null}
+            </div>
           </article>
         ))}
 
