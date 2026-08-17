@@ -65,10 +65,11 @@ authored rules, not by tier.
 ## Knock-outs and winning
 
 - A player at 0 health is out. Their die leaves the board.
-- Whoever landed the killing blow takes the dead player's hand into their own,
-  then must discard down to three cards before doing anything else. Anything the
-  dead player had in play — their equipped weapon, their face-up aces — goes into
-  the face-down pile instead.
+- Whoever landed the killing blow takes the dead player's hand **and their
+  face-up aces**, then must discard down to three cards before doing anything
+  else. Looted aces land face up like any other, but do not pull a replacement
+  card the way a searched ace does. The dead player's equipped weapon goes into
+  the face-down pile.
 - The last player standing wins. If the last two players are knocked out
   simultaneously, nobody wins.
 
@@ -116,10 +117,12 @@ only when they are on — including the ace rules, which ride along with them.
 
 ### Aces
 
-- An ace goes face up the moment it reaches your hand — searched, picked up at
-  spawn, or looted from a kill — and you immediately draw a replacement from the
-  pile. This is wider than "when you search" in the authored rules, but it keeps
-  the ace-hoarding win reachable and stops a forced discard from eating an ace.
+- An ace goes face up the moment it reaches you — searched, picked up at spawn,
+  or looted from a kill. This is wider than "when you search" in the authored
+  rules, but it keeps the ace-hoarding win reachable and stops a forced discard
+  from eating an ace. Only an ace you turned up yourself pulls a replacement card
+  from the pile; looted ones do not.
 - Playing a face-up ace for its face value costs whatever that suit normally costs
   (a diamond is still free) and discards the ace, giving up its place in the set.
-- Collecting all four face-up aces wins the game immediately.
+- Collecting all four face-up aces wins the game immediately. Aces can be taken
+  off a corpse, so a player sitting on two or three of them is a target.

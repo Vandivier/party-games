@@ -437,9 +437,9 @@ describe('looting a kill', () => {
     expect(victim.out).toBe(true);
     expect(killer.hand).toHaveLength(4);
     expect(state.pendingDiscard).toBe(me);
-    // What the dead player had in play goes back to the pile, not to the killer.
+    // Their aces come across face up; their weapon goes back to the pile.
+    expect(killer.aces.map((entry) => entry.label)).toEqual(['A♠']);
     expect(state.pile.some((entry) => entry.label === '9♣')).toBe(true);
-    expect(state.pile.some((entry) => entry.label === 'A♠')).toBe(true);
 
     // Nothing else is legal until the hand is back to the limit.
     expect(legalActions(state).every((action) => action.type === 'discard')).toBe(true);

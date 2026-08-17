@@ -24,7 +24,7 @@ export default function DeckArenaPage() {
           are snipers and shotguns, <strong>J♥/Q♥</strong> regen, <strong>K♥</strong> revives you the
           moment you die, face spades are overshields worth 2/4/6, and face diamonds give a free
           step, a teleport, or an extra action. Aces go face up when you find them — collect all four
-          and you win outright.
+          and you win outright, and killing someone takes theirs along with their hand.
         </p>
         <p className="small" style={{ marginBottom: 0 }}>
           <Link href="/deck-arena/rules">Full rules →</Link>

@@ -24,6 +24,7 @@ import {
   type ArenaAction,
   type ArenaPlayer,
   type ArenaState,
+  type BotPersona,
   type CreateGameOptions,
   type Direction,
   type LegalAction,
@@ -31,6 +32,8 @@ import {
 } from './types';
 
 const CELL_COUNT = BOARD_SIZE * BOARD_SIZE;
+/** A bot rolling this on 1d6 hunts aces instead of fighting. */
+export const COLLECTOR_ROLL = 1;
 /** How many rolled spawns to reject before falling back to a legal cell. */
 const MAX_SPAWN_ROLLS = 200;
 
@@ -147,6 +150,7 @@ export function createGame({ players, seed, specialAbilities }: CreateGameOption
       aces: [],
       weapon: null,
       regen: null,
+      persona: 'brawler',
       out: false,
     })),
     order: [],
@@ -166,11 +170,24 @@ export function createGame({ players, seed, specialAbilities }: CreateGameOption
       : 'Special abilities are off.',
   );
 
+  assignPersonas(state);
   state.order = rollTurnOrder(state);
   spawnPlayers(state);
   const first = seatAt(state, state.order[0] as number);
   if (first) beginTurn(state, first);
   return state;
+}
+
+/**
+ * Each bot rolls 1d6 in private: a 1 sends it hunting aces instead of players.
+ * Nothing is logged — the persona is theirs to give away by playing it.
+ */
+function assignPersonas(state: ArenaState): void {
+  if (!state.specialAbilities) return; // no aces to collect, no reason to hunt
+  for (const player of state.players) {
+    if (!player.isBot) continue;
+    player.persona = die(state) === COLLECTOR_ROLL ? 'collector' : 'brawler';
+  }
 }
 
 /** Highest 1d6 goes first; tied players re-roll among themselves. */
@@ -1004,20 +1021,19 @@ function knockOut(state: ArenaState, victim: ArenaPlayer, killerIndex: number | 
   victim.overshield = 0;
   victim.regen = null;
 
-  // Anything in play goes back to the pile; the hand goes to whoever killed them.
+  // The weapon goes back to the pile; cards and aces go to whoever killed them.
   if (victim.weapon) state.pile.push(victim.weapon.card);
-  state.pile.push(...victim.aces);
   victim.weapon = null;
-  victim.aces = [];
 
-  const looted = victim.hand;
+  const looted = [...victim.aces, ...victim.hand];
+  victim.aces = [];
   victim.hand = [];
   const killer = killerIndex === null ? undefined : seatAt(state, killerIndex);
   log(state, `${victim.name} is knocked out.`);
 
   if (killer && !killer.out && looted.length > 0) {
     log(state, `${killer.name} loots ${looted.length} card${looted.length === 1 ? '' : 's'}.`);
-    for (const card of looted) giveCard(state, killer, card);
+    for (const card of looted) giveCard(state, killer, card, { drawReplacement: false });
     if (killer.hand.length > HAND_LIMIT) state.pendingDiscard = killer.index;
   } else {
     state.pile.push(...looted);
@@ -1027,14 +1043,21 @@ function knockOut(state: ArenaState, victim: ArenaPlayer, killerIndex: number | 
 }
 
 /**
- * Put a card into a player's keeping. Aces go face up and pull a replacement
- * from the pile; everything else lands in hand.
+ * Put a card into a player's keeping. Aces go face up; one you turned up
+ * yourself also pulls a replacement from the pile. Everything else lands in
+ * hand.
  */
-function giveCard(state: ArenaState, player: ArenaPlayer, card: Card): void {
+function giveCard(
+  state: ArenaState,
+  player: ArenaPlayer,
+  card: Card,
+  { drawReplacement = true }: { drawReplacement?: boolean } = {},
+): void {
   if (acesCollect(state) && card.rank === 'A') {
     player.aces.push(card);
     log(state, `${player.name} plays ${card.label} face up (${player.aces.length}/${ACES_TO_WIN}).`);
     if (checkAceWin(state, player)) return;
+    if (!drawReplacement) return;
     const replacement = drawFromPile(state);
     if (replacement) {
       log(state, `${player.name} draws a replacement from the pile.`);

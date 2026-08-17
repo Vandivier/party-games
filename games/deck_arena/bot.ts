@@ -55,6 +55,11 @@ export function botAction(state: ArenaState): ArenaAction | null {
     return drop ?? actions[0] ?? null;
   }
 
+  if (me.persona === 'collector') {
+    const move = collectorAction(state, me, actions);
+    if (move) return move;
+  }
+
   // A shot in hand is worth everything else on the turn.
   const shot = bestShot(state, me, actions);
   if (shot) return shot;
@@ -111,6 +116,123 @@ export function botAction(state: ArenaState): ArenaAction | null {
 
   if (search) return search;
   return actions.find(is('endTurn')) ?? actions[0] ?? null;
+}
+
+/**
+ * The ace hunter. It still shoots — killing an ace holder is the fastest way to
+ * a set — but its time goes into turning over cards rather than trading fire.
+ */
+function collectorAction(
+  state: ArenaState,
+  me: ArenaPlayer,
+  actions: LegalAction[],
+): ArenaAction | null {
+  const holders = state.players.filter(
+    (player) => !player.out && player.index !== me.index && player.aces.length > 0,
+  );
+
+  // Anyone sitting on aces is the priority target, whatever their health.
+  const raid = actions
+    .filter(is('shoot'))
+    .find((action) => holders.some((holder) => holder.index === action.targetIndex));
+  if (raid) return raid;
+
+  const heal = actions
+    .filter(is('activateCard'))
+    .find((action) => suitOf(me, action) === 'hearts');
+  if (heal && me.hp <= HURT) return heal;
+
+  // Turning over cards is the whole plan: pay for a second search if need be.
+  const search = actions.find(is('search'));
+  if (search && me.hand.length < HAND_LIMIT) return search;
+
+  if (me.hand.length >= HAND_LIMIT && cardAt(state, me)) {
+    const worst = [...me.hand].sort((a, b) => usefulness(state, me, a) - usefulness(state, me, b))[0];
+    const drop = worst && actions.filter(is('discard')).find((action) => action.cardId === worst.id);
+    if (drop) return drop;
+  }
+
+  const blink = teleportOntoLoot(state, me, actions);
+  if (blink) return blink;
+
+  // Diamonds are free actions, and free actions are more searching.
+  if (state.turn.actionsLeft === 0) {
+    const energy = actions
+      .filter(is('activateCard'))
+      .find((action) => {
+        const card = cardFor(me, action);
+        return card?.suit === 'diamonds' && diamondAbility(state, card) !== 'teleport';
+      });
+    if (energy) return energy;
+  }
+
+  const hunt = walkToward(state, me, actions, holders[0] ?? nearestLoot(state, me));
+  if (hunt) return hunt;
+
+  return null; // fall through to the ordinary play
+}
+
+/** The closest cell with a card still on it. */
+function nearestLoot(state: ArenaState, me: ArenaPlayer): { x: number; y: number } | undefined {
+  let best: { x: number; y: number } | undefined;
+  let bestDistance = Infinity;
+  for (let y = 1; y <= BOARD_SIZE; y++) {
+    for (let x = 1; x <= BOARD_SIZE; x++) {
+      if (!cardAt(state, { x, y })) continue;
+      const away = distance(me, { x, y });
+      if (away > 0 && away < bestDistance) {
+        bestDistance = away;
+        best = { x, y };
+      }
+    }
+  }
+  return best;
+}
+
+/** Blink onto a loaded cell when one is out of walking reach. */
+function teleportOntoLoot(
+  state: ArenaState,
+  me: ArenaPlayer,
+  actions: LegalAction[],
+): ArenaAction | null {
+  const teleport = actions
+    .filter(is('activateCard'))
+    .find((action) => diamondAbility(state, cardFor(me, action) ?? unknownCard) === 'teleport');
+  if (!teleport || me.hand.length >= HAND_LIMIT) return null;
+  if (cardAt(state, me)) return null; // already standing on loot
+
+  const loot = nearestLoot(state, me);
+  if (!loot || distance(me, loot) <= 2) return null;
+  if (playerAt(state, loot)) return null;
+  return { ...teleport, to: loot };
+}
+
+/** One step (paid or free) toward a spot on the board. */
+function walkToward(
+  state: ArenaState,
+  me: ArenaPlayer,
+  actions: LegalAction[],
+  goal: { x: number; y: number } | undefined,
+): ArenaAction | null {
+  if (!goal) return null;
+  const steps = [
+    ...actions.filter(is('move')),
+    ...actions.filter(is('activateCard')).filter((action) => action.direction),
+  ];
+  const scored: { action: ArenaAction; score: number }[] = [];
+  for (const action of steps) {
+    const direction = 'direction' in action ? action.direction : undefined;
+    if (!direction) continue;
+    const to = step(me, direction);
+    if (!inBounds(to)) continue;
+    const closer = distance(goal, me) - distance(goal, to);
+    const loot = cardAt(state, to) ? 1 : 0;
+    const free = action.type === 'activateCard' ? 1 : 0;
+    scored.push({ action, score: closer * 3 + loot * 2 + free });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0];
+  return best && best.score > 0 ? best.action : null;
 }
 
 /** Pick the shot that takes the most out of the arena. */

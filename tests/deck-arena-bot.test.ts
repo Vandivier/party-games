@@ -78,6 +78,8 @@ describe('bot', () => {
     const me = state.players[state.order[0]!]!;
     const prey = state.players[state.order[1]!]!;
     me.hand = [];
+    me.aces = [];
+    me.persona = 'brawler';
     Object.assign(me, { x: 1, y: 1 });
     Object.assign(prey, { x: 6, y: 1 });
 
@@ -114,5 +116,96 @@ describe('bot', () => {
     playOut(state);
     expect(state.phase).toBe('over');
     expect(state.players.filter((player) => !player.out)).toHaveLength(1);
+  });
+});
+
+describe('personas', () => {
+  it('sends roughly one bot in six hunting aces, and never a human', () => {
+    let collectors = 0;
+    let bots = 0;
+    for (let seed = 0; seed < 120; seed++) {
+      const state = createGame({
+        players: [
+          { name: 'Human' },
+          { name: 'Bot 1', isBot: true },
+          { name: 'Bot 2', isBot: true },
+        ],
+        seed: `persona-${seed}`,
+      });
+      expect(state.players[0]!.persona).toBe('brawler');
+      for (const player of state.players.filter((entry) => entry.isBot)) {
+        bots++;
+        if (player.persona === 'collector') collectors++;
+      }
+    }
+    // 1d6 landing on a 1: comfortably inside the noise for 240 rolls.
+    expect(collectors / bots).toBeGreaterThan(0.08);
+    expect(collectors / bots).toBeLessThan(0.28);
+  });
+
+  it('does not bother rolling a persona with abilities off', () => {
+    const state = createGame({
+      players: [{ name: 'A' }, { name: 'Bot', isBot: true }],
+      seed: 'plain-persona',
+      specialAbilities: false,
+    });
+    expect(state.players.every((player) => player.persona === 'brawler')).toBe(true);
+  });
+
+  it('a collector searches instead of chasing the fight', () => {
+    const state = createGame({
+      players: [{ name: 'Bot', isBot: true }, { name: 'Prey' }],
+      seed: 'collector-search',
+    });
+    const me = state.players[state.order[0]!]!;
+    const prey = state.players[state.order[1]!]!;
+    me.persona = 'collector';
+    me.hand = [];
+    me.aces = [];
+    state.orderIndex = 0;
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
+    Object.assign(me, { x: 1, y: 1 });
+    Object.assign(prey, { x: 3, y: 1 });
+    state.board.fill(null);
+    state.board[(1 - 1) * 6 + (1 - 1)] = card('7♥'); // a card underfoot
+
+    expect(botAction(state)).toMatchObject({ type: 'search' });
+  });
+
+  it('a collector walks toward loot rather than toward a player', () => {
+    const state = createGame({
+      players: [{ name: 'Bot', isBot: true }, { name: 'Prey' }],
+      seed: 'collector-walk',
+    });
+    const me = state.players[state.order[0]!]!;
+    const prey = state.players[state.order[1]!]!;
+    me.persona = 'collector';
+    me.hand = [];
+    me.aces = [];
+    state.orderIndex = 0;
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
+    Object.assign(me, { x: 3, y: 3 });
+    Object.assign(prey, { x: 6, y: 3 }); // east
+    state.board.fill(null);
+    state.board[(3 - 1) * 6 + (1 - 1)] = card('7♥'); // loot at 1,3, to the west
+
+    expect(botAction(state)).toMatchObject({ type: 'move', direction: 'west' });
+  });
+
+  it('a collector shoots the ace holder over the easier target', () => {
+    const state = createGame({
+      players: [{ name: 'Bot', isBot: true }, { name: 'Hoarder' }, { name: 'Weakling' }],
+      seed: 'collector-raid',
+    });
+    const [me, hoarder, weakling] = [state.order[0]!, state.order[1]!, state.order[2]!];
+    state.orderIndex = 0;
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
+    state.board.fill(null);
+    Object.assign(state.players[me]!, { x: 1, y: 1, hand: [], aces: [], persona: 'collector' });
+    Object.assign(state.players[hoarder]!, { x: 1, y: 3, hp: 6, aces: [card('A♠')] });
+    Object.assign(state.players[weakling]!, { x: 3, y: 1, hp: 1, aces: [] });
+    state.players[me]!.weapon = { card: card('10♣'), loaded: true, revealed: false };
+
+    expect(botAction(state)).toMatchObject({ type: 'shoot', targetIndex: hoarder });
   });
 });

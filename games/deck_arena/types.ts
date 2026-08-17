@@ -27,6 +27,12 @@ export interface EquippedWeapon {
   revealed: boolean;
 }
 
+/**
+ * How a bot plays. Most fight; a few go looking for the four-ace win instead.
+ * Hidden from the view — you find out by watching what they do.
+ */
+export type BotPersona = 'brawler' | 'collector';
+
 export interface Regen {
   turnsLeft: number;
   /** 6 for the jack of hearts, 12 for the queen. */
@@ -46,6 +52,7 @@ export interface ArenaPlayer extends Position {
   aces: Card[];
   weapon: EquippedWeapon | null;
   regen: Regen | null;
+  persona: BotPersona;
   out: boolean;
 }
 
