@@ -12,8 +12,8 @@ import {
   type NewGameInput,
 } from '@/lib/hero-war-client';
 import { CardRow, SelectableCard } from '@/components/PlayingCard';
+import { SeatForm } from '@/components/SeatForm';
 import { Board } from './Board';
-import { NewGameForm } from './NewGameForm';
 
 const STORAGE_KEY = 'party-games:hero-war';
 
@@ -82,7 +82,16 @@ export function HeroWarTable() {
     return (
       <div className="stack">
         {error ? <div className="error">{error}</div> : null}
-        <NewGameForm onStart={startGame} busy={busy} />
+        <SeatForm
+          onStart={startGame}
+          busy={busy}
+          maxSeats={8}
+          defaultSeats={[
+            { name: 'Player 1', isBot: false },
+            { name: 'Bot', isBot: true },
+          ]}
+          note="Bots play themselves. Two or more humans share this screen, hot-seat style."
+        />
       </div>
     );
   }

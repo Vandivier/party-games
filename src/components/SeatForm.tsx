@@ -1,27 +1,34 @@
 'use client';
 
 import { useState } from 'react';
-import type { NewGameInput } from '@/lib/hero-war-client';
 
-interface Seat {
+export interface Seat {
   name: string;
   isBot: boolean;
 }
 
-// Names read back in the log ("Player 1's turn"), so avoid pronouns here.
-const DEFAULT_SEATS: Seat[] = [
-  { name: 'Player 1', isBot: false },
-  { name: 'Bot', isBot: true },
-];
+export interface SeatFormValue {
+  players: Seat[];
+  seed?: string;
+}
 
-export function NewGameForm({
+/** Shared "who is playing" panel: seats, bot toggles, and an optional seed. */
+export function SeatForm({
   onStart,
   busy,
+  maxSeats,
+  defaultSeats,
+  note,
+  submitLabel = 'Deal the cards',
 }: {
-  onStart: (input: NewGameInput) => void;
+  onStart: (value: SeatFormValue) => void;
   busy: boolean;
+  maxSeats: number;
+  defaultSeats: Seat[];
+  note: string;
+  submitLabel?: string;
 }) {
-  const [seats, setSeats] = useState<Seat[]>(DEFAULT_SEATS);
+  const [seats, setSeats] = useState<Seat[]>(defaultSeats);
   const [seed, setSeed] = useState('');
 
   const update = (index: number, patch: Partial<Seat>) =>
@@ -29,27 +36,21 @@ export function NewGameForm({
 
   const addSeat = () =>
     setSeats((current) =>
-      current.length >= 8 ? current : [...current, { name: `Player ${current.length + 1}`, isBot: true }],
+      current.length >= maxSeats
+        ? current
+        : [...current, { name: `Player ${current.length + 1}`, isBot: true }],
     );
 
   const removeSeat = () =>
     setSeats((current) => (current.length <= 2 ? current : current.slice(0, -1)));
-
-  const start = () => {
-    const input: NewGameInput = { players: seats };
-    if (seed.trim()) input.seed = seed.trim();
-    onStart(input);
-  };
 
   const humans = seats.filter((seat) => !seat.isBot).length;
 
   return (
     <div className="panel stack" style={{ maxWidth: 560 }}>
       <div>
-        <h2>New table</h2>
-        <p className="muted small">
-          Bots play themselves. Two or more humans share this screen, hot-seat style.
-        </p>
+        <h2>New game</h2>
+        <p className="muted small">{note}</p>
       </div>
 
       <div className="stack" style={{ gap: '0.5rem' }}>
@@ -74,7 +75,7 @@ export function NewGameForm({
       </div>
 
       <div className="row">
-        <button type="button" onClick={addSeat} disabled={seats.length >= 8}>
+        <button type="button" onClick={addSeat} disabled={seats.length >= maxSeats}>
           Add seat
         </button>
         <button type="button" onClick={removeSeat} disabled={seats.length <= 2}>
@@ -94,8 +95,13 @@ export function NewGameForm({
       {humans === 0 ? <p className="error small">At least one seat has to be a human.</p> : null}
 
       <div className="row">
-        <button type="button" className="primary" onClick={start} disabled={busy || humans === 0}>
-          {busy ? 'Dealing…' : 'Deal the cards'}
+        <button
+          type="button"
+          className="primary"
+          disabled={busy || humans === 0}
+          onClick={() => onStart({ players: seats, ...(seed.trim() ? { seed: seed.trim() } : {}) })}
+        >
+          {busy ? 'Dealing…' : submitLabel}
         </button>
       </div>
     </div>

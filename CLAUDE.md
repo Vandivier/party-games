@@ -21,8 +21,9 @@ Three layers, in dependency order. Nothing may point back up the list.
 2. **`games/<game>/`** — one self-contained directory per game holding the rules docs and the rules
    code: `engine.ts`, `bot.ts`, `view.ts`, `types.ts`. Pure TypeScript. No React, no `fetch`, no
    `fs`, no randomness beyond the seeded `Random` on the state.
-3. **`src/server/` and `src/app/` and `src/components/`** — the session store, the API routes, and
-   the UI.
+3. **`src/server/` and `src/app/` and `src/components/`** — one session store per game, the API
+   routes, and the UI. `GameError` (`src/server/game-error.ts`), `readGameDoc`, `SeatForm`, and
+   `PlayingCard` are shared; anything game-specific lives in a game-named file or folder.
 
 ### Engine contract
 
@@ -66,11 +67,13 @@ engine is wrong. `/hero-war/rules` reads both files off disk, so they cannot dri
 
 ## Testing
 
-`tests/` mirrors the layers: `core`, `hero-war-engine`, `hero-war-bot`, `hero-war-view`,
-`hero-war-server`. Engine tests stage a table by overwriting hands with known cards
+`tests/` mirrors the layers, one file per game per layer: `core`, `registry`, `<game>-engine`,
+`<game>-bot`, `<game>-view`, `<game>-server`. Engine tests stage a table by overwriting hands with known cards
 (`staged([...], [...])`) rather than fishing for a lucky seed. Bot tests play whole games out to a
 winner, which is the regression test that matters most: it catches illegal actions, stuck turns,
-and non-terminating games in one go. Add tests in the same style for a new game.
+and non-terminating games in one go. Add tests in the same style for a new game. Where a game hides
+information, assert the redaction directly — Deck Arena's tests check that no card label ever
+reaches the log or the floor view.
 
 ## Adding a game
 

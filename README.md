@@ -3,8 +3,12 @@
 Games to play IRL with few and common to no props needed — imagination, dice, poker cards, pen,
 paper — plus a web app that lets you play them here, against a bot or a friend sharing the screen.
 
-**Playable now:** [Hero War](games/hero_war/RULES.md) — War with a hero on the field. Face cards
-fight, clubs are equipment, hearts nullify, diamonds burst, spades sabotage.
+**Playable now:**
+
+- [Hero War](games/hero_war/RULES.md) — War with a hero on the field. Face cards fight, clubs are
+  equipment, hearts nullify, diamonds burst, spades sabotage. 2–8 players.
+- [Deck Arena](games/deck_arena/RULES.md) — a 6x6 arena dealt face down from one poker deck. Roll
+  for actions, loot the floor, equip clubs as weapons, and shoot down your row. 2–8 players.
 
 **Planned:** [Magic Hero War](games/magic_hero_war/CONCEPT.md) — Hero War gone wide: spells, a
 party of heroes, three or more players, and a deck map catalogue that turns ordinary poker cards
@@ -43,10 +47,10 @@ games/<game>/          one directory per game: rules + engine + bot + view
   types.ts               state and action types
 src/core/              shared table primitives: deck, dice, seeded RNG
 src/games/registry.ts  the game catalog the lobby renders
-src/server/            authoritative session store, request parsing, HTTP helpers
-src/app/               routes: lobby, /hero-war, /hero-war/rules, /dice, /api/*
-src/components/        React UI
-tests/                 vitest suites for core, engine, bot, view, and server
+src/server/            authoritative session stores, request parsing, HTTP helpers
+src/app/               routes: lobby, each game, its rules page, /dice, /api/*
+src/components/        React UI, shared pieces at the top level
+tests/                 vitest suites per game: engine, bot, view, and server
 ```
 
 ## How a game plays out

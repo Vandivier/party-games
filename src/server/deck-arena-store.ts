@@ -1,20 +1,16 @@
 /**
- * Server-side home for live Hero War tables.
+ * Server-side home for live Deck Arena tables.
  *
- * The engine state never leaves this module: routes hand back per-seat views,
- * so a client can only ever see its own cards. Bot seats are resolved here too,
- * which keeps the client a thin renderer.
+ * Same contract as the Hero War store: engine state never leaves this module,
+ * clients get per-seat views, and bot seats are played out here so their
+ * decisions — and the cards they can see — never reach a browser.
  */
 
-import { act, currentActor, resolveDefense } from '@games/hero_war/engine';
-import { botAction, botDefense } from '@games/hero_war/bot';
-import { toView, type HeroWarView } from '@games/hero_war/view';
-import { createGame } from '@games/hero_war/engine';
-import type { HeroWarAction, HeroWarState } from '@games/hero_war/types';
-
+import { act, createGame, currentActor } from '@games/deck_arena/engine';
+import { botAction } from '@games/deck_arena/bot';
+import { toView, type ArenaView } from '@games/deck_arena/view';
+import type { ArenaAction, ArenaState } from '@games/deck_arena/types';
 import { GameError } from './game-error';
-
-export { GameError };
 
 export interface SeatInfo {
   index: number;
@@ -24,35 +20,30 @@ export interface SeatInfo {
 
 interface Session {
   id: string;
-  state: HeroWarState;
+  state: ArenaState;
   seats: SeatInfo[];
   createdAt: number;
   updatedAt: number;
 }
 
-export interface NewGameRequest {
+export interface NewArenaRequest {
   players: { name: string; isBot?: boolean }[];
   seed?: string;
-  deckCount?: number;
 }
 
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_SESSIONS = 500;
 /** Backstop so a bot loop can never spin forever. */
-const MAX_BOT_STEPS = 500;
+const MAX_BOT_STEPS = 2000;
 
 /** Survives dev-server hot reloads, which would otherwise drop live tables. */
 const sessions: Map<string, Session> = ((
-  globalThis as { __heroWarSessions?: Map<string, Session> }
-).__heroWarSessions ??= new Map());
+  globalThis as { __deckArenaSessions?: Map<string, Session> }
+).__deckArenaSessions ??= new Map());
 
-export function createSession(request: NewGameRequest): { view: HeroWarView; seats: SeatInfo[] } {
+export function createSession(request: NewArenaRequest): { view: ArenaView; seats: SeatInfo[] } {
   const players = normalizePlayers(request.players);
-  const state = createGame({
-    players,
-    ...(request.seed ? { seed: request.seed } : {}),
-    ...(request.deckCount ? { deckCount: request.deckCount } : {}),
-  });
+  const state = createGame({ players, ...(request.seed ? { seed: request.seed } : {}) });
 
   const id = newId();
   const session: Session = {
@@ -69,13 +60,13 @@ export function createSession(request: NewGameRequest): { view: HeroWarView; sea
   return { view: viewOf(session, firstHumanSeat(session)), seats: session.seats };
 }
 
-export function getView(gameId: string, seat: number): HeroWarView {
+export function getView(gameId: string, seat: number): ArenaView {
   const session = requireSession(gameId);
   requireSeat(session, seat);
   return viewOf(session, seat);
 }
 
-export function applyAction(gameId: string, seat: number, action: HeroWarAction): HeroWarView {
+export function applyAction(gameId: string, seat: number, action: ArenaAction): ArenaView {
   const session = requireSession(gameId);
   requireSeat(session, seat);
   requireTurn(session, seat);
@@ -87,22 +78,9 @@ export function applyAction(gameId: string, seat: number, action: HeroWarAction)
   return viewOf(session, seat);
 }
 
-export function applyDefense(gameId: string, seat: number, cardId: string | null): HeroWarView {
-  const session = requireSession(gameId);
-  requireSeat(session, seat);
-  if (!session.state.pendingAttack) throw new GameError('No attack is pending.');
-  requireTurn(session, seat);
-
-  const result = resolveDefense(session.state, { cardId });
-  if (!result.ok) throw new GameError(result.error ?? 'Illegal defense.');
-  session.updatedAt = Date.now();
-  runBots(session);
-  return viewOf(session, seat);
-}
-
 /* ------------------------------------------------------------------ internals */
 
-/** Play out every consecutive bot decision until a human is on the clock. */
+/** Play out every consecutive bot turn until a human is on the clock. */
 function runBots(session: Session): void {
   const { state } = session;
   for (let step = 0; step < MAX_BOT_STEPS; step++) {
@@ -111,24 +89,19 @@ function runBots(session: Session): void {
     const player = state.players[actor];
     if (!player?.isBot) return;
 
-    if (state.pendingAttack) {
-      const result = resolveDefense(state, botDefense(state));
-      if (!result.ok) throw new GameError(`Bot defense failed: ${result.error}`, 500);
-      continue;
-    }
     const action = botAction(state);
     if (!action) return;
     const result = act(state, action);
     if (!result.ok) throw new GameError(`Bot action failed: ${result.error}`, 500);
   }
-  throw new GameError('Bot play did not settle; the table is stuck.', 500);
+  throw new GameError('Bot play did not settle; the arena is stuck.', 500);
 }
 
-function normalizePlayers(players: NewGameRequest['players']): { name: string; isBot: boolean }[] {
+function normalizePlayers(players: NewArenaRequest['players']): { name: string; isBot: boolean }[] {
   if (!Array.isArray(players) || players.length < 2) {
-    throw new GameError('Hero War needs at least 2 players.');
+    throw new GameError('Deck Arena needs at least 2 players.');
   }
-  if (players.length > 8) throw new GameError('Hero War tops out at 8 players.');
+  if (players.length > 8) throw new GameError('Deck Arena tops out at 8 players.');
   const normalized = players.map((player, index) => ({
     name: String(player?.name ?? '').trim().slice(0, 24) || `Player ${index + 1}`,
     isBot: Boolean(player?.isBot),
@@ -143,19 +116,19 @@ function firstHumanSeat(session: Session): number {
   return session.seats.find((seat) => !seat.isBot)?.index ?? 0;
 }
 
-function viewOf(session: Session, seat: number): HeroWarView {
+function viewOf(session: Session, seat: number): ArenaView {
   return toView(session.state, seat, session.id);
 }
 
 function requireSession(gameId: string): Session {
   const session = sessions.get(gameId);
-  if (!session) throw new GameError('That table is gone. Start a new game.', 404);
+  if (!session) throw new GameError('That arena is gone. Start a new game.', 404);
   return session;
 }
 
 function requireSeat(session: Session, seat: number): SeatInfo {
   const info = session.seats[seat];
-  if (!info) throw new GameError(`Seat ${seat} is not at this table.`, 404);
+  if (!info) throw new GameError(`Seat ${seat} is not in this arena.`, 404);
   if (info.isBot) throw new GameError('That seat is played by a bot.', 403);
   return info;
 }
@@ -187,7 +160,7 @@ function newId(): string {
     : Math.random().toString(36).slice(2, 10);
 }
 
-/** Test helper: forget every table. */
+/** Test helper: forget every arena. */
 export function resetSessions(): void {
   sessions.clear();
 }

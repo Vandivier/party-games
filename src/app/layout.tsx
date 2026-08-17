@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <nav>
             <Link href="/hero-war">Hero War</Link>
+            <Link href="/deck-arena">Deck Arena</Link>
             <Link href="/dice">Dice</Link>
           </nav>
         </header>

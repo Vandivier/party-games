@@ -1,7 +1,8 @@
 /** Hand-rolled request parsing — the API surface is small enough not to need a schema library. */
 
 import type { HeroWarAction } from '@games/hero_war/types';
-import { GameError, type NewGameRequest } from './hero-war-store';
+import { GameError } from './game-error';
+import type { NewGameRequest } from './hero-war-store';
 
 type Json = Record<string, unknown>;
 

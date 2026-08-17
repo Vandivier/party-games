@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GameError } from './hero-war-store';
+import { GameError } from './game-error';
 
 /** Turn a thrown GameError into its status; anything else is a 500. */
 export function errorResponse(error: unknown): NextResponse {
