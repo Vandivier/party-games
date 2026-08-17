@@ -574,7 +574,55 @@ label.inline {
   flex-direction: column;
   align-items: stretch;
   gap: 0.3rem;
-  max-width: 9rem;
+  max-width: 10rem;
+}
+
+.hand-card-face {
+  position: relative;
+  align-self: flex-start;
+}
+
+.info-dot {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  background: var(--felt-deep);
+  border-color: rgba(232, 195, 122, 0.7);
+  color: var(--gold);
+}
+
+.info-dot[aria-expanded='true'] {
+  background: var(--gold);
+  color: #241c07;
+}
+
+.card-name {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.card-brief {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--ink-dim);
+}
+
+/* The half people forget: what playing the card costs you. */
+.card-fate {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--gold);
 }
 
 button.tiny {

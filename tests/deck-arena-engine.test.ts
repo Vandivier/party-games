@@ -430,8 +430,35 @@ describe('rounds', () => {
     expect(state.log.some((line) => line.includes('Round 1 ends.'))).toBe(true);
   });
 
+  it('never drops a card under a player who is standing on the cell', () => {
+    const state = staged('under-foot', ['Ada', 'Bo']);
+    const [first, second] = [state.order[0]!, state.order[1]!];
+    place(state, first, 2, 2);
+    place(state, second, 5, 5);
+    // Only the two occupied cells are free of cards, and the pile is deep.
+    state.board.fill(card('7♥'));
+    state.board[cellIndex({ x: 2, y: 2 })] = null;
+    state.board[cellIndex({ x: 5, y: 5 })] = null;
+    state.pile = [card('2♥'), card('3♥'), card('4♥')];
+
+    act(state, { type: 'endTurn' });
+    expect(cardAt(state, { x: 2, y: 2 })).toBeNull();
+    expect(cardAt(state, { x: 5, y: 5 })).toBeNull();
+    expect(state.pile).toHaveLength(3);
+
+    // Step off, and the square you left is fair game again.
+    act(state, { type: 'move', direction: 'north' });
+    act(state, { type: 'endTurn' });
+    expect(cardAt(state, { x: 5, y: 5 })).not.toBeNull();
+    expect(cardAt(state, { x: 2, y: 2 })).toBeNull(); // Ada still stands there
+  });
+
   it('drops fresh cards onto empty squares at the end of every turn', () => {
     const state = staged('replenish', ['Ada', 'Bo', 'Cy']);
+    // Park everyone in a corner so their own cells do not skew the count.
+    place(state, state.order[0]!, 1, 1);
+    place(state, state.order[1]!, 3, 1);
+    place(state, state.order[2]!, 5, 1);
     state.pile = [card('2♥'), card('3♥')];
 
     // The staging helper cleared the floor, so the pile lands on it a card a turn.

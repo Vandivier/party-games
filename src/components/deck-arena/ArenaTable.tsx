@@ -9,6 +9,7 @@ import {
   sendAction,
   type NewArenaInput,
 } from '@/lib/deck-arena-client';
+import { describeCard } from '@games/deck_arena/card-info';
 import { PlayingCard } from '@/components/PlayingCard';
 import { SeatForm, type SeatFormValue } from '@/components/SeatForm';
 import { ArenaBoard, seatColor } from './ArenaBoard';
@@ -24,6 +25,8 @@ export function ArenaTable() {
   const [teleportCardId, setTeleportCardId] = useState<string | null>(null);
   /** A game left running in this browser, offered rather than resumed for you. */
   const [resumable, setResumable] = useState<ArenaView | null>(null);
+  /** The hand card whose description is open, if any. */
+  const [infoCardId, setInfoCardId] = useState<string | null>(null);
 
   const run = useCallback(async (task: () => Promise<{ view: ArenaView }>) => {
     setBusy(true);
@@ -244,12 +247,42 @@ export function ArenaTable() {
               <h3 style={{ margin: 0 }}>Weapon</h3>
               {view.you.weapon?.card ? (
                 <>
-                  <PlayingCard card={view.you.weapon.card} small />
+                  <div className="hand-card-face">
+                    <PlayingCard card={view.you.weapon.card} small />
+                    <button
+                      type="button"
+                      className="info-dot"
+                      aria-expanded={infoCardId === view.you.weapon.card.id}
+                      aria-label={`What does ${view.you.weapon.card.label} do?`}
+                      onClick={() =>
+                        setInfoCardId(
+                          infoCardId === view.you.weapon?.card?.id
+                            ? null
+                            : (view.you.weapon?.card?.id ?? null),
+                        )
+                      }
+                    >
+                      i
+                    </button>
+                  </div>
                   <span className="muted">
-                    {view.you.weapon.damage} damage · range {view.you.weapon.range} ·{' '}
-                    {view.you.weapon.loaded ? 'loaded' : 'out of ammo'} ·{' '}
+                    {describeCard(view.you.weapon.card, {
+                      faceCardAbilities: view.faceCardAbilities,
+                      aceVictory: view.aceVictory,
+                    }).name}{' '}
+                    · {view.you.weapon.loaded ? 'loaded' : 'out of ammo'} ·{' '}
                     {view.you.weapon.revealed ? 'face up' : 'face down'}
                   </span>
+                  {infoCardId === view.you.weapon.card.id ? (
+                    <p className="card-brief small" style={{ flexBasis: '100%' }}>
+                      {
+                        describeCard(view.you.weapon.card, {
+                          faceCardAbilities: view.faceCardAbilities,
+                          aceVictory: view.aceVictory,
+                        }).detail
+                      }
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <span className="muted">unarmed</span>
@@ -270,9 +303,32 @@ export function ArenaTable() {
                     const drop = discards.find((action) => action.cardId === card.id);
                     const teleports =
                       view.faceCardAbilities && card.suit === 'diamonds' && card.rank === 'Q';
+                    const brief = describeCard(card, {
+                      faceCardAbilities: view.faceCardAbilities,
+                      aceVictory: view.aceVictory,
+                    });
+                    const open = infoCardId === card.id;
                     return (
                       <div key={card.id} className="hand-card">
-                        <PlayingCard card={card} />
+                        <div className="hand-card-face">
+                          <PlayingCard card={card} />
+                          <button
+                            type="button"
+                            className="info-dot"
+                            aria-expanded={open}
+                            aria-label={`What does ${card.label} do?`}
+                            title={`${card.label} — ${brief.name}`}
+                            onClick={() => setInfoCardId(open ? null : card.id)}
+                          >
+                            i
+                          </button>
+                        </div>
+                        <span className="card-name small">{brief.name}</span>
+                        {open ? (
+                          <p className="card-brief small">
+                            {brief.detail} <span className="card-fate">{brief.fate}</span>
+                          </p>
+                        ) : null}
                         {layOut ? (
                           <button
                             type="button"
@@ -281,7 +337,7 @@ export function ArenaTable() {
                             onClick={() => take(layOut)}
                             title="Show the table, keep it face up, and draw a replacement"
                           >
-                            Play face up (free)
+                            Play face up · no action
                           </button>
                         ) : null}
                         {teleports && uses.length > 0 ? (
@@ -303,7 +359,7 @@ export function ArenaTable() {
                               onClick={() => take(use)}
                             >
                               {use.label.replace(/^(Equip|Play) \S+ — /, '')}
-                              {use.cost === 0 ? ' (free)' : ''}
+                              {use.cost === 0 ? ' · no action' : ''}
                             </button>
                           ))
                         )}

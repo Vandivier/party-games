@@ -104,6 +104,10 @@ export const acesCollect = (state: ArenaState): boolean => state.aceVictory;
 /* -------------------------------------------------------------- the board */
 
 export const cellIndex = ({ x, y }: Position): number => (y - 1) * BOARD_SIZE + (x - 1);
+export const positionOf = (index: number): Position => ({
+  x: (index % BOARD_SIZE) + 1,
+  y: Math.floor(index / BOARD_SIZE) + 1,
+});
 export const inBounds = ({ x, y }: Position): boolean =>
   x >= 1 && x <= BOARD_SIZE && y >= 1 && y <= BOARD_SIZE;
 
@@ -352,9 +356,13 @@ function advanceTurn(state: ArenaState): void {
  * far as the pile stretches.
  */
 function replenishBoard(state: ArenaState): void {
+  // A cell counts as empty only if nobody is standing on it: cards drop onto
+  // bare floor, never under a player's feet.
   const empties: number[] = [];
   for (let index = 0; index < CELL_COUNT; index++) {
-    if (!state.board[index]) empties.push(index);
+    if (state.board[index]) continue;
+    if (playerAt(state, positionOf(index))) continue;
+    empties.push(index);
   }
   state.rng.shuffle(empties);
   state.rng.shuffle(state.pile);
@@ -487,9 +495,13 @@ function cardOptions(
       const ability = heartAbility(state, card);
       if (ability === 'auto-revive') break; // fires by itself when you die
       if (ability === 'regen') {
-        options.push({ ...base, cost: 1, label: `Play ${card.label} — full heal, then regen` });
+        options.push({ ...base, cost: 1, label: `Play ${card.label} — Regen: full heal, then 1 a turn` });
       } else if (ability === 'overheal-regen') {
-        options.push({ ...base, cost: 1, label: `Play ${card.label} — full heal, then overheal regen` });
+        options.push({
+          ...base,
+          cost: 1,
+          label: `Play ${card.label} — Regen with overheal: full heal, then 1 a turn`,
+        });
       } else if (player.hp < MAX_HP) {
         options.push({ ...base, cost: 1, label: `Play ${card.label} — heal ${healAmount(card)}` });
       }
@@ -502,7 +514,7 @@ function cardOptions(
         options.push({
           ...base,
           cost: 1,
-          label: `Play ${card.label} — overshield ${overshieldValue(card)}`,
+          label: `Play ${card.label} — Overshield ${overshieldValue(card)}`,
         });
       } else if (player.shield < MAX_SHIELD) {
         options.push({ ...base, cost: 1, label: `Play ${card.label} — +${shieldAmount(card)} shield` });
@@ -520,13 +532,17 @@ function cardOptions(
             ...base,
             direction,
             cost: 0,
-            label: `Play ${card.label} — free step ${direction}`,
+            label: `Play ${card.label} — Super mobility: step ${direction}`,
           });
         }
       } else if (ability === 'teleport') {
-        options.push({ ...base, cost: 0, label: `Play ${card.label} — teleport anywhere` });
+        options.push({ ...base, cost: 0, label: `Play ${card.label} — Teleport anywhere` });
       } else if (ability === 'blitzkrieg') {
-        options.push({ ...base, cost: 0, label: `Play ${card.label} — +1 action, free reloads` });
+        options.push({
+          ...base,
+          cost: 0,
+          label: `Play ${card.label} — Blitzkrieg: +1 action, free reloads`,
+        });
       } else {
         options.push({
           ...base,
