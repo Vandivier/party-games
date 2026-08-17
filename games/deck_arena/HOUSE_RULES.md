@@ -26,9 +26,10 @@ authored rules, not by tier.
 - The 16 cards set aside form the **face-down pile**. Every discard, every
   replaced weapon, and everything a knocked-out player was carrying goes into it,
   and it is shuffled whenever cards are added.
-- At the end of each round, empty cells are refilled face down from that pile.
-  If the pile holds fewer cards than there are empty cells, randomly chosen cells
-  get them and the rest stay empty.
+- At the end of every player's turn, empty cells are refilled face down from that
+  pile. If the pile holds fewer cards than there are empty cells, randomly chosen
+  cells get them and the rest stay empty — so the floor thins out as cards pile
+  up in hands.
 
 ## Setup
 

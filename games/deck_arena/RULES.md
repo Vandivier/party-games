@@ -27,8 +27,8 @@ battle games like Fortnite.
 
 ### The map
 
-- Empty map cells replenish randomly from the face-down discard pile every round
-  at the end of the round.
+- Empty map cells replenish randomly from the face-down discard pile at the end
+  of every player's turn.
 
 ### Turns
 

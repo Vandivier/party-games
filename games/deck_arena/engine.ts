@@ -32,7 +32,8 @@ import {
 } from './types';
 
 const CELL_COUNT = BOARD_SIZE * BOARD_SIZE;
-/** A bot rolling this on 1d6 hunts aces instead of fighting. */
+/** The persona die, and the face that sends a bot hunting aces: 1 in 3. */
+export const PERSONA_DIE = 3;
 export const COLLECTOR_ROLL = 1;
 /** How many rolled spawns to reject before falling back to a legal cell. */
 const MAX_SPAWN_ROLLS = 200;
@@ -179,14 +180,16 @@ export function createGame({ players, seed, specialAbilities }: CreateGameOption
 }
 
 /**
- * Each bot rolls 1d6 in private: a 1 sends it hunting aces instead of players.
+ * Each bot rolls 1d3 in private: a 1 sends it hunting aces instead of players.
  * Nothing is logged — the persona is theirs to give away by playing it.
  */
 function assignPersonas(state: ArenaState): void {
   if (!state.specialAbilities) return; // no aces to collect, no reason to hunt
   for (const player of state.players) {
     if (!player.isBot) continue;
-    player.persona = die(state) === COLLECTOR_ROLL ? 'collector' : 'brawler';
+    const persona: BotPersona =
+      rollDie(PERSONA_DIE, state.rng) === COLLECTOR_ROLL ? 'collector' : 'brawler';
+    player.persona = persona;
   }
 }
 
@@ -317,12 +320,15 @@ function tickRegen(state: ArenaState, player: ArenaPlayer): void {
 }
 
 function advanceTurn(state: ArenaState): void {
+  replenishBoard(state);
+
   const total = state.order.length;
   for (let attempt = 0; attempt < total * 2 + 1; attempt++) {
     state.orderIndex++;
     if (state.orderIndex >= total) {
       state.orderIndex = 0;
-      endOfRound(state);
+      state.round++;
+      log(state, `Round ${state.round - 1} ends.`);
       if (state.phase === 'over') return;
     }
     const player = seatAt(state, state.order[state.orderIndex] as number);
@@ -333,8 +339,11 @@ function advanceTurn(state: ArenaState): void {
   }
 }
 
-/** Empty cells replenish face down from the pile, as far as it stretches. */
-function endOfRound(state: ArenaState): void {
+/**
+ * Empty cells replenish face down from the pile at the end of every turn, as
+ * far as the pile stretches.
+ */
+function replenishBoard(state: ArenaState): void {
   const empties: number[] = [];
   for (let index = 0; index < CELL_COUNT; index++) {
     if (!state.board[index]) empties.push(index);
@@ -349,12 +358,13 @@ function endOfRound(state: ArenaState): void {
     filled++;
   }
 
-  log(
-    state,
-    `Round ${state.round} ends. ${filled} cell${filled === 1 ? '' : 's'} replenish from the pile` +
-      `${empties.length > 0 ? `, ${empties.length} left empty` : ''}.`,
-  );
-  state.round++;
+  if (filled > 0) {
+    log(
+      state,
+      `${filled} card${filled === 1 ? ' drops' : 's drop'} into the arena` +
+        `${empties.length > 0 ? `, ${empties.length} cell${empties.length === 1 ? '' : 's'} left empty` : ''}.`,
+    );
+  }
 }
 
 /* ---------------------------------------------------------------- actions */

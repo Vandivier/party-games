@@ -120,10 +120,10 @@ describe('bot', () => {
 });
 
 describe('personas', () => {
-  it('sends roughly one bot in six hunting aces, and never a human', () => {
+  it('sends about one bot in three hunting aces, and never a human', () => {
     let collectors = 0;
     let bots = 0;
-    for (let seed = 0; seed < 120; seed++) {
+    for (let seed = 0; seed < 200; seed++) {
       const state = createGame({
         players: [
           { name: 'Human' },
@@ -138,9 +138,9 @@ describe('personas', () => {
         if (player.persona === 'collector') collectors++;
       }
     }
-    // 1d6 landing on a 1: comfortably inside the noise for 240 rolls.
-    expect(collectors / bots).toBeGreaterThan(0.08);
-    expect(collectors / bots).toBeLessThan(0.28);
+    // A 1 on 1d3; these bounds are loose enough for 400 rolls.
+    expect(collectors / bots).toBeGreaterThan(0.25);
+    expect(collectors / bots).toBeLessThan(0.42);
   });
 
   it('does not bother rolling a persona with abilities off', () => {

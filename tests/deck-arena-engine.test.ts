@@ -413,9 +413,8 @@ describe('shooting', () => {
 });
 
 describe('rounds', () => {
-  it('passes the turn in rolled order and replenishes at the end of the round', () => {
+  it('passes the turn in rolled order and counts the round on the way past', () => {
     const state = staged('rounds', ['Ada', 'Bo', 'Cy']);
-    state.pile = [card('2♥'), card('3♥')];
     expect(currentActor(state)).toBe(state.order[0]);
 
     act(state, { type: 'endTurn' });
@@ -427,10 +426,23 @@ describe('rounds', () => {
     act(state, { type: 'endTurn' });
     expect(currentActor(state)).toBe(state.order[0]);
     expect(state.round).toBe(2);
-    // The board was emptied by the staging helper, so both pile cards land on it.
+    expect(state.log.some((line) => line.includes('Round 1 ends.'))).toBe(true);
+  });
+
+  it('drops fresh cards onto empty squares at the end of every turn', () => {
+    const state = staged('replenish', ['Ada', 'Bo', 'Cy']);
+    state.pile = [card('2♥'), card('3♥')];
+
+    // The staging helper cleared the floor, so the pile lands on it a card a turn.
+    act(state, { type: 'endTurn' });
     expect(state.board.filter(Boolean)).toHaveLength(2);
     expect(state.pile).toHaveLength(0);
-    expect(state.log.some((line) => line.includes('replenish'))).toBe(true);
+    expect(state.log.some((line) => line.includes('drop into the arena'))).toBe(true);
+
+    // Nothing left to drop: no noise in the log for an empty pile.
+    const before = state.log.length;
+    act(state, { type: 'endTurn' });
+    expect(state.log.slice(before).some((line) => line.includes('drop into the arena'))).toBe(false);
   });
 
   it('skips knocked-out players when the turn comes round', () => {

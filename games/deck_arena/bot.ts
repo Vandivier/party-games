@@ -45,7 +45,11 @@ export function botAction(state: ArenaState): ArenaAction | null {
   if (index === null) return null;
   const me = seatAt(state, index);
   if (!me) return null;
-  const actions = legalActions(state);
+  // Face-up aces are worth more as a set than as a one-point heal, so bots only
+  // ever play cards out of hand.
+  const actions = legalActions(state).filter(
+    (action) => action.type !== 'activateCard' || me.hand.some((card) => card.id === action.cardId),
+  );
   if (actions.length === 0) return null;
 
   // Forced to shed looted cards: drop the least useful one.
