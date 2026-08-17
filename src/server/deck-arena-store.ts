@@ -29,7 +29,8 @@ interface Session {
 export interface NewArenaRequest {
   players: { name: string; isBot?: boolean }[];
   seed?: string;
-  specialAbilities?: boolean;
+  faceCardAbilities?: boolean;
+  aceVictory?: boolean;
 }
 
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
@@ -47,7 +48,10 @@ export function createSession(request: NewArenaRequest): { view: ArenaView; seat
   const state = createGame({
     players,
     ...(request.seed ? { seed: request.seed } : {}),
-    ...(request.specialAbilities === undefined ? {} : { specialAbilities: request.specialAbilities }),
+    ...(request.faceCardAbilities === undefined
+      ? {}
+      : { faceCardAbilities: request.faceCardAbilities }),
+    ...(request.aceVictory === undefined ? {} : { aceVictory: request.aceVictory }),
   });
 
   const id = newId();

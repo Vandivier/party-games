@@ -40,7 +40,8 @@ describe('bot', () => {
         { name: 'Hurt' },
       ],
       seed: 'aim',
-      specialAbilities: false,
+      faceCardAbilities: false,
+      aceVictory: false,
     });
     const [me, healthy, hurt] = [state.order[0]!, state.order[1]!, state.order[2]!];
     state.orderIndex = 0;
@@ -143,11 +144,25 @@ describe('personas', () => {
     expect(collectors / bots).toBeLessThan(0.42);
   });
 
-  it('does not bother rolling a persona with abilities off', () => {
+  it('rolls personas whenever the ace victory is in play, abilities or not', () => {
+    let collectors = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const state = createGame({
+        players: [{ name: 'A' }, { name: 'Bot', isBot: true }],
+        seed: `plain-persona-${seed}`,
+        faceCardAbilities: false,
+      });
+      expect(state.players[0]!.persona).toBe('brawler');
+      if (state.players[1]!.persona === 'collector') collectors++;
+    }
+    expect(collectors).toBeGreaterThan(0);
+  });
+
+  it('skips the persona roll when there is no ace victory to chase', () => {
     const state = createGame({
       players: [{ name: 'A' }, { name: 'Bot', isBot: true }],
-      seed: 'plain-persona',
-      specialAbilities: false,
+      seed: 'no-hunt',
+      aceVictory: false,
     });
     expect(state.players.every((player) => player.persona === 'brawler')).toBe(true);
   });

@@ -13,7 +13,7 @@ const card = (label: string): Card => {
 };
 
 function arena(seed = 'view'): ArenaState {
-  return createGame({ players: [{ name: 'Ada' }, { name: 'Bo' }], seed, specialAbilities: false });
+  return createGame({ players: [{ name: 'Ada' }, { name: 'Bo' }], seed, faceCardAbilities: false, aceVictory: false });
 }
 
 describe('per-seat view', () => {

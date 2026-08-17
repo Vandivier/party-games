@@ -75,7 +75,8 @@ export interface ArenaView {
   seat: number;
   phase: ArenaState['phase'];
   round: number;
-  specialAbilities: boolean;
+  faceCardAbilities: boolean;
+  aceVictory: boolean;
   boardSize: number;
   maxHp: number;
   maxShield: number;
@@ -128,7 +129,8 @@ export function toView(state: ArenaState, seat: number, gameId: string): ArenaVi
     seat,
     phase: state.phase,
     round: state.round,
-    specialAbilities: state.specialAbilities,
+    faceCardAbilities: state.faceCardAbilities,
+    aceVictory: state.aceVictory,
     boardSize: BOARD_SIZE,
     maxHp: MAX_HP,
     maxShield: MAX_SHIELD,

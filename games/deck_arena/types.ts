@@ -70,8 +70,10 @@ export type ArenaPhase = 'play' | 'over';
 export interface ArenaState {
   rng: Random;
   seed: string;
-  /** Face-card abilities, and the ace rules that ride with them. */
-  specialAbilities: boolean;
+  /** Jacks, queens and kings carry their special abilities. */
+  faceCardAbilities: boolean;
+  /** Aces collect face up, and four of them win the game. */
+  aceVictory: boolean;
   /** 36 cells, row-major: index = (y - 1) * 6 + (x - 1). */
   board: (Card | null)[];
   /** The face-down pile: the 16 unused cards plus everything discarded since. */
@@ -109,6 +111,8 @@ export type ArenaAction =
       directions?: Direction[];
     }
   | { type: 'reload' }
+  /** Lay an ace from hand face up on the field, toward the four-ace win. */
+  | { type: 'playAce'; cardId: string }
   | { type: 'discard'; cardId: string }
   | { type: 'endTurn' };
 
@@ -122,6 +126,7 @@ export interface ActionResult {
 export interface CreateGameOptions {
   players: { name: string; isBot?: boolean }[];
   seed?: string | number;
-  /** Defaults to true: face-card abilities and ace collecting. */
-  specialAbilities?: boolean;
+  /** Both default to true, and are independent of each other. */
+  faceCardAbilities?: boolean;
+  aceVictory?: boolean;
 }

@@ -77,26 +77,29 @@ export type DiamondAbility = 'mobility' | 'teleport' | 'blitzkrieg' | null;
 const isFaceRank = (card: Card): boolean => ['J', 'Q', 'K'].includes(card.rank);
 
 export function clubAbility(state: ArenaState, card: Card): ClubAbility {
-  if (!state.specialAbilities || card.suit !== 'clubs' || !isFaceRank(card)) return null;
+  if (!state.faceCardAbilities || card.suit !== 'clubs' || !isFaceRank(card)) return null;
   return card.rank === 'J' ? 'exploding' : card.rank === 'Q' ? 'piercing' : 'shotgun';
 }
 
 export function heartAbility(state: ArenaState, card: Card): HeartAbility {
-  if (!state.specialAbilities || card.suit !== 'hearts' || !isFaceRank(card)) return null;
+  if (!state.faceCardAbilities || card.suit !== 'hearts' || !isFaceRank(card)) return null;
   return card.rank === 'J' ? 'regen' : card.rank === 'Q' ? 'overheal-regen' : 'auto-revive';
 }
 
 export function spadeAbility(state: ArenaState, card: Card): SpadeAbility {
-  return state.specialAbilities && card.suit === 'spades' && isFaceRank(card) ? 'overshield' : null;
+  return state.faceCardAbilities && card.suit === 'spades' && isFaceRank(card) ? 'overshield' : null;
 }
 
 export function diamondAbility(state: ArenaState, card: Card): DiamondAbility {
-  if (!state.specialAbilities || card.suit !== 'diamonds' || !isFaceRank(card)) return null;
+  if (!state.faceCardAbilities || card.suit !== 'diamonds' || !isFaceRank(card)) return null;
   return card.rank === 'J' ? 'mobility' : card.rank === 'Q' ? 'teleport' : 'blitzkrieg';
 }
 
-/** Aces collect face up instead of sitting in hand — with abilities switched on. */
-export const acesCollect = (state: ArenaState): boolean => state.specialAbilities;
+/**
+ * Aces collect face up — an option of its own, because an ace is not a face card
+ * and the two rules confuse each other when bundled.
+ */
+export const acesCollect = (state: ArenaState): boolean => state.aceVictory;
 
 /* -------------------------------------------------------------- the board */
 
@@ -125,7 +128,12 @@ export const hasProtection = (player: ArenaPlayer): boolean =>
 
 /* ------------------------------------------------------------------ setup */
 
-export function createGame({ players, seed, specialAbilities }: CreateGameOptions): ArenaState {
+export function createGame({
+  players,
+  seed,
+  faceCardAbilities,
+  aceVictory,
+}: CreateGameOptions): ArenaState {
   if (!players || players.length < 2) throw new Error('Deck Arena needs at least 2 players.');
   if (players.length > 8) throw new Error('Deck Arena tops out at 8 players.');
 
@@ -135,7 +143,8 @@ export function createGame({ players, seed, specialAbilities }: CreateGameOption
   const state: ArenaState = {
     rng,
     seed: rng.seed,
-    specialAbilities: specialAbilities ?? true,
+    faceCardAbilities: faceCardAbilities ?? true,
+    aceVictory: aceVictory ?? true,
     board: deck.slice(0, CELL_COUNT),
     pile: deck.slice(CELL_COUNT),
     players: players.map((player, index) => ({
@@ -166,9 +175,8 @@ export function createGame({ players, seed, specialAbilities }: CreateGameOption
 
   log(
     state,
-    state.specialAbilities
-      ? 'Special abilities are on: face cards carry abilities and aces collect face up.'
-      : 'Special abilities are off.',
+    `Face card abilities are ${state.faceCardAbilities ? 'on' : 'off'}; ` +
+      `the ace victory is ${state.aceVictory ? 'on' : 'off'}.`,
   );
 
   assignPersonas(state);
@@ -184,7 +192,7 @@ export function createGame({ players, seed, specialAbilities }: CreateGameOption
  * Nothing is logged — the persona is theirs to give away by playing it.
  */
 function assignPersonas(state: ArenaState): void {
-  if (!state.specialAbilities) return; // no aces to collect, no reason to hunt
+  if (!state.aceVictory) return; // nothing to collect, so nobody hunts
   for (const player of state.players) {
     if (!player.isBot) continue;
     const persona: BotPersona =
@@ -431,6 +439,14 @@ export function legalActions(state: ArenaState): LegalAction[] {
   }
 
   for (const card of player.hand) {
+    if (card.rank === 'A' && acesCollect(state)) {
+      actions.push({
+        type: 'playAce',
+        cardId: card.id,
+        cost: 0,
+        label: `Play ${card.label} face up — ${player.aces.length + 1}/${ACES_TO_WIN}`,
+      });
+    }
     actions.push({ type: 'discard', cardId: card.id, cost: 0, label: `Discard ${card.label}` });
   }
 
@@ -737,6 +753,16 @@ export function act(state: ArenaState, action: ArenaAction, seat?: number): Acti
       return ok();
     }
 
+    case 'playAce': {
+      const card = player.hand.find((entry) => entry.id === action.cardId);
+      if (!card) return fail('That card is not in your hand.');
+      if (card.rank !== 'A') return fail('Only an ace can be laid out face up.');
+      if (!acesCollect(state)) return fail('The ace victory is switched off in this game.');
+      takeFromHand(player, card.id);
+      giveCard(state, player, card);
+      return ok();
+    }
+
     case 'discard': {
       const card = takeFromHand(player, action.cardId);
       if (!card) return fail('That card is not in your hand.');
@@ -1009,7 +1035,7 @@ function applyDamage(
 
 /** Death, unless the king of hearts is in hand to answer it. */
 function killPlayer(state: ArenaState, victim: ArenaPlayer, killerIndex: number | null): void {
-  const revive = state.specialAbilities
+  const revive = state.faceCardAbilities
     ? victim.hand.find((card) => heartAbility(state, card) === 'auto-revive')
     : undefined;
   if (revive) {

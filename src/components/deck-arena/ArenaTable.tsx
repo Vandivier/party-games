@@ -22,6 +22,8 @@ export function ArenaTable() {
   const [error, setError] = useState<string | null>(null);
   /** Set while a teleport is waiting for the player to pick a cell. */
   const [teleportCardId, setTeleportCardId] = useState<string | null>(null);
+  /** A game left running in this browser, offered rather than resumed for you. */
+  const [resumable, setResumable] = useState<ArenaView | null>(null);
 
   const run = useCallback(async (task: () => Promise<{ view: ArenaView }>) => {
     setBusy(true);
@@ -29,6 +31,7 @@ export function ArenaTable() {
     try {
       const { view: next } = await task();
       setView(next);
+      setResumable(null);
       setTeleportCardId(null);
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -41,7 +44,8 @@ export function ArenaTable() {
     }
   }, []);
 
-  // Pick a game back up after a refresh.
+  // Offer to pick an unfinished game back up — but always land on setup first,
+  // so arriving here means choosing how to play rather than being dropped in.
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
@@ -54,14 +58,26 @@ export function ArenaTable() {
     }
     if (!parsed.gameId) return;
     fetchView(parsed.gameId, parsed.seat ?? 0)
-      .then((response) => setView(response.view))
+      .then((response) => {
+        if (response.view.phase === 'over') {
+          window.localStorage.removeItem(STORAGE_KEY);
+          return;
+        }
+        setResumable(response.view);
+      })
       .catch(() => window.localStorage.removeItem(STORAGE_KEY));
   }, []);
+
+  const forget = () => {
+    window.localStorage.removeItem(STORAGE_KEY);
+    setResumable(null);
+  };
 
   const start = (value: SeatFormValue) => {
     const input: NewArenaInput = {
       players: value.players,
-      specialAbilities: value.flags.abilities ?? true,
+      faceCardAbilities: value.flags.faceCardAbilities ?? true,
+      aceVictory: value.flags.aceVictory ?? true,
       ...(value.seed ? { seed: value.seed } : {}),
     };
     return run(() => createArena(input).then(({ view: v }) => ({ view: v })));
@@ -79,6 +95,27 @@ export function ArenaTable() {
     return (
       <div className="stack">
         {error ? <div className="error">{error}</div> : null}
+        {resumable ? (
+          <div className="banner">
+            <strong>You have an arena in progress</strong> — {resumable.gameId}, round{' '}
+            {resumable.round}, {resumable.you.hp} hp
+            {resumable.faceCardAbilities ? ', face card abilities on' : ''}
+            {resumable.aceVictory ? ', ace victory on' : ''}.
+            <div className="row" style={{ marginTop: '0.6rem' }}>
+              <button
+                type="button"
+                className="primary"
+                disabled={busy}
+                onClick={() => setView(resumable)}
+              >
+                Resume it
+              </button>
+              <button type="button" disabled={busy} onClick={forget}>
+                Discard and set up a new one
+              </button>
+            </div>
+          </div>
+        ) : null}
         <SeatForm
           onStart={start}
           busy={busy}
@@ -90,9 +127,15 @@ export function ArenaTable() {
           note="Two to eight fighters. Bots play themselves; humans share this screen, hot-seat style."
           toggles={[
             {
-              key: 'abilities',
-              label: 'Special abilities',
-              hint: 'face-card abilities and ace collecting',
+              key: 'faceCardAbilities',
+              label: 'Face card abilities',
+              hint: 'jacks, queens and kings carry special abilities',
+              defaultValue: true,
+            },
+            {
+              key: 'aceVictory',
+              label: 'Ace victory',
+              hint: 'aces collect face up, and four of them win',
               defaultValue: true,
             },
           ]}
@@ -111,10 +154,11 @@ export function ArenaTable() {
   const reload = byType('reload')[0];
   const endTurn = byType('endTurn')[0];
   const cardActions = byType('activateCard');
+  const acePlays = byType('playAce');
   const discards = byType('discard');
   // The one card playable off-turn; the server has the final say on legality.
   const reactions =
-    view.specialAbilities && !view.you.out && view.phase === 'play' && !view.isYourTurn
+    view.faceCardAbilities && !view.you.out && view.phase === 'play' && !view.isYourTurn
       ? view.you.hand.filter((card) => card.suit === 'diamonds' && card.rank === 'J')
       : [];
   const waitingHuman = view.opponents.find(
@@ -180,7 +224,7 @@ export function ArenaTable() {
               </span>
             </div>
 
-            {view.specialAbilities ? (
+            {view.aceVictory ? (
               <div className="row small">
                 <h3 style={{ margin: 0 }}>Aces</h3>
                 {view.you.aces.length === 0 ? (
@@ -222,12 +266,24 @@ export function ArenaTable() {
                 <div className="hand-row">
                   {view.you.hand.map((card) => {
                     const uses = cardActions.filter((action) => action.cardId === card.id);
+                    const layOut = acePlays.find((action) => action.cardId === card.id);
                     const drop = discards.find((action) => action.cardId === card.id);
                     const teleports =
-                      view.specialAbilities && card.suit === 'diamonds' && card.rank === 'Q';
+                      view.faceCardAbilities && card.suit === 'diamonds' && card.rank === 'Q';
                     return (
                       <div key={card.id} className="hand-card">
                         <PlayingCard card={card} />
+                        {layOut ? (
+                          <button
+                            type="button"
+                            className="primary tiny"
+                            disabled={busy}
+                            onClick={() => take(layOut)}
+                            title="Show the table, keep it face up, and draw a replacement"
+                          >
+                            Play face up (free)
+                          </button>
+                        ) : null}
                         {teleports && uses.length > 0 ? (
                           <button
                             type="button"

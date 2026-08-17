@@ -22,6 +22,8 @@ export function HeroWarTable() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [boostIds, setBoostIds] = useState<string[]>([]);
+  /** A game left running in this browser, offered rather than resumed for you. */
+  const [resumable, setResumable] = useState<HeroWarView | null>(null);
 
   const run = useCallback(async (task: () => Promise<{ view: HeroWarView }>) => {
     setBusy(true);
@@ -29,6 +31,7 @@ export function HeroWarTable() {
     try {
       const { view: next } = await task();
       setView(next);
+      setResumable(null);
       setBoostIds([]);
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -41,7 +44,8 @@ export function HeroWarTable() {
     }
   }, []);
 
-  // Pick a game back up after a refresh.
+  // Offer to pick an unfinished game back up — but always land on setup first,
+  // so arriving here means choosing how to play rather than being dropped in.
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
@@ -54,9 +58,20 @@ export function HeroWarTable() {
     }
     if (!parsed.gameId) return;
     fetchView(parsed.gameId, parsed.seat ?? 0)
-      .then((response) => setView(response.view))
+      .then((response) => {
+        if (response.view.phase === 'over') {
+          window.localStorage.removeItem(STORAGE_KEY);
+          return;
+        }
+        setResumable(response.view);
+      })
       .catch(() => window.localStorage.removeItem(STORAGE_KEY));
   }, []);
+
+  const forget = () => {
+    window.localStorage.removeItem(STORAGE_KEY);
+    setResumable(null);
+  };
 
   const startGame = (input: NewGameInput) => run(() => createGame(input).then(({ view: v }) => ({ view: v })));
   const takeAction = (action: HeroWarAction) =>
@@ -82,6 +97,25 @@ export function HeroWarTable() {
     return (
       <div className="stack">
         {error ? <div className="error">{error}</div> : null}
+        {resumable ? (
+          <div className="banner">
+            <strong>You have a table in progress</strong> — {resumable.gameId}, playing{' '}
+            {resumable.you.name}.
+            <div className="row" style={{ marginTop: '0.6rem' }}>
+              <button
+                type="button"
+                className="primary"
+                disabled={busy}
+                onClick={() => setView(resumable)}
+              >
+                Resume it
+              </button>
+              <button type="button" disabled={busy} onClick={forget}>
+                Discard and deal a new one
+              </button>
+            </div>
+          </div>
+        ) : null}
         <SeatForm
           onStart={startGame}
           busy={busy}

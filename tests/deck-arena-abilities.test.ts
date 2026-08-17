@@ -41,23 +41,35 @@ function equip(state: ArenaState, index: number, label: string): void {
 }
 
 describe('opting in', () => {
-  it('is on by default and can be switched off', () => {
-    expect(createGame({ players: [{ name: 'A' }, { name: 'B' }], seed: 's' }).specialAbilities).toBe(
-      true,
-    );
-    const plain = createGame({
-      players: [{ name: 'A' }, { name: 'B' }],
-      seed: 's',
-      specialAbilities: false,
-    });
-    expect(plain.specialAbilities).toBe(false);
+  it('turns both rules on by default', () => {
+    const state = createGame({ players: [{ name: 'A' }, { name: 'B' }], seed: 's' });
+    expect(state.faceCardAbilities).toBe(true);
+    expect(state.aceVictory).toBe(true);
   });
 
-  it('leaves face cards ordinary when switched off', () => {
+  it('switches the two rules independently', () => {
+    const acesOnly = createGame({
+      players: [{ name: 'A' }, { name: 'B' }],
+      seed: 's',
+      faceCardAbilities: false,
+    });
+    expect(acesOnly.faceCardAbilities).toBe(false);
+    expect(acesOnly.aceVictory).toBe(true);
+
+    const facesOnly = createGame({
+      players: [{ name: 'A' }, { name: 'B' }],
+      seed: 's',
+      aceVictory: false,
+    });
+    expect(facesOnly.faceCardAbilities).toBe(true);
+    expect(facesOnly.aceVictory).toBe(false);
+  });
+
+  it('leaves face cards ordinary when their abilities are off', () => {
     const state = createGame({
       players: [{ name: 'A' }, { name: 'B' }],
       seed: 'plain',
-      specialAbilities: false,
+      faceCardAbilities: false,
     });
     state.board.fill(null);
     const seat = state.order[0]!;
@@ -394,11 +406,49 @@ describe('aces', () => {
     expect(state.winnerIndex).toBe(seat);
   });
 
-  it('stay in hand when abilities are off', () => {
+  it('collect face up even with face card abilities switched off', () => {
     const state = createGame({
       players: [{ name: 'A' }, { name: 'B' }],
       seed: 'plain-aces',
-      specialAbilities: false,
+      faceCardAbilities: false,
+    });
+    state.board.fill(null);
+    const seat = state.order[0]!;
+    const me = state.players[seat]!;
+    me.hand = [];
+    me.aces = [];
+    place(state, seat, 2, 2);
+    turnFor(state, seat, 2);
+    state.board[cellIndex({ x: 2, y: 2 })] = card('A♠');
+
+    act(state, { type: 'search' });
+    expect(me.aces.map((entry) => entry.label)).toEqual(['A♠']);
+    expect(me.hand.map((entry) => entry.label)).not.toContain('A♠');
+  });
+
+  it('can be laid out from hand for free, drawing a replacement', () => {
+    const state = arena();
+    const seat = state.order[0]!;
+    turnFor(state, seat, 1);
+    const me = state.players[seat]!;
+    me.hand = [card('A♦'), card('5♥')];
+    state.pile = [card('9♣')];
+
+    const option = legalActions(state).find((action) => action.type === 'playAce');
+    expect(option).toMatchObject({ cardId: card('A♦').id, cost: 0 });
+    expect(option?.label).toContain('1/4');
+
+    expect(act(state, { type: 'playAce', cardId: card('A♦').id }).ok).toBe(true);
+    expect(me.aces.map((entry) => entry.label)).toEqual(['A♦']);
+    expect(me.hand.map((entry) => entry.label).sort()).toEqual(['5♥', '9♣']);
+    expect(state.turn.actionsLeft).toBe(1); // free
+  });
+
+  it('stay in hand as ordinary ones when the ace victory is off', () => {
+    const state = createGame({
+      players: [{ name: 'A' }, { name: 'B' }],
+      seed: 'no-ace-win',
+      aceVictory: false,
     });
     state.board.fill(null);
     const seat = state.order[0]!;
@@ -412,6 +462,21 @@ describe('aces', () => {
     act(state, { type: 'search' });
     expect(me.aces).toHaveLength(0);
     expect(me.hand.map((entry) => entry.label)).toEqual(['A♠']);
+    // No face-up set to build, so no way — and no reason — to lay one out.
+    expect(legalActions(state).some((action) => action.type === 'playAce')).toBe(false);
+    expect(act(state, { type: 'playAce', cardId: card('A♠').id }).ok).toBe(false);
+    // It is still a perfectly good one-point card of its suit.
+    expect(act(state, { type: 'activateCard', cardId: card('A♠').id }).ok).toBe(true);
+    expect(me.shield).toBe(1);
+  });
+
+  it('refuses to lay out anything that is not an ace', () => {
+    const state = arena();
+    const seat = state.order[0]!;
+    turnFor(state, seat, 1);
+    state.players[seat]!.hand = [card('5♥')];
+    expect(act(state, { type: 'playAce', cardId: card('5♥').id }).ok).toBe(false);
+    expect(legalActions(state).some((action) => action.type === 'playAce')).toBe(false);
   });
 });
 

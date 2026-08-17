@@ -59,6 +59,10 @@ export function botAction(state: ArenaState): ArenaAction | null {
     return drop ?? actions[0] ?? null;
   }
 
+  // Laying an ace out is free and never wrong.
+  const layAce = actions.find(is('playAce'));
+  if (layAce) return layAce;
+
   if (me.persona === 'collector') {
     const move = collectorAction(state, me, actions);
     if (move) return move;

@@ -20,11 +20,13 @@ export default function DeckArenaPage() {
           tiers · <strong>♦ diamonds</strong> burn for extra actions.
         </p>
         <p className="small muted" style={{ marginTop: '0.6rem', marginBottom: 0 }}>
-          With <strong>special abilities</strong> on, face cards change everything: club face cards
-          are snipers and shotguns, <strong>J♥/Q♥</strong> regen, <strong>K♥</strong> revives you the
-          moment you die, face spades are overshields worth 2/4/6, and face diamonds give a free
-          step, a teleport, or an extra action. Aces go face up when you find them — collect all four
-          and you win outright, and killing someone takes theirs along with their hand.
+          Two optional rules, each switched on or off when you set the game up.{' '}
+          <strong>Face card abilities</strong>: club face cards are snipers and shotguns,{' '}
+          <strong>J♥/Q♥</strong> regen, <strong>K♥</strong> revives you the moment you die, face
+          spades are overshields worth 2/4/6, and face diamonds give a free step, a teleport, or an
+          extra action. <strong>Ace victory</strong>: aces go face up when you find them, sit outside
+          your hand limit, and collecting all four wins outright — killing someone takes theirs along
+          with their hand.
         </p>
         <p className="small" style={{ marginBottom: 0 }}>
           <Link href="/deck-arena/rules">Full rules →</Link>

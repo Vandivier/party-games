@@ -74,11 +74,20 @@ authored rules, not by tier.
 - The last player standing wins. If the last two players are knocked out
   simultaneously, nobody wins.
 
-## Special abilities
+## The two optional rules
 
-Special abilities are an option chosen at game start. This app turns them **on by
-default**; switch them off for the plain game. Everything in this section applies
-only when they are on — including the ace rules, which ride along with them.
+Two independent options are chosen at game start, and this app turns **both on by
+default**:
+
+- **Face card abilities** — jacks, queens and kings carry the abilities below.
+  Off, they are ordinary tier-3 cards.
+- **Ace victory** — aces collect face up and four of them win. Off, an ace is
+  just a one-point card of its suit that lives in your hand.
+
+They are separate deliberately: an ace is not a face card, and bundling the two
+invites exactly that argument at the table. Everything under "The club snipers"
+through "The diamond reactions" belongs to the first option; everything under
+"Aces" belongs to the second.
 
 ### The club snipers
 
@@ -119,7 +128,8 @@ only when they are on — including the ace rules, which ride along with them.
 ### Aces
 
 - An ace goes face up the moment it reaches you — searched, picked up at spawn,
-  or looted from a kill. This is wider than "when you search" in the authored
+  or looted from a kill. Should one ever end up in your hand, you can lay it out
+  face up for free at any point in your turn, drawing a replacement as usual. This is wider than "when you search" in the authored
   rules, but it keeps the ace-hoarding win reachable and stops a forced discard
   from eating an ace. Only an ace you turned up yourself pulls a replacement card
   from the pile; looted ones do not.

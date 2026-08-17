@@ -30,7 +30,8 @@ export function parseNewArena(input: unknown): NewArenaRequest {
     }),
   };
   if (typeof body.seed === 'string' && body.seed.trim()) request.seed = body.seed.trim().slice(0, 64);
-  if (typeof body.specialAbilities === 'boolean') request.specialAbilities = body.specialAbilities;
+  if (typeof body.faceCardAbilities === 'boolean') request.faceCardAbilities = body.faceCardAbilities;
+  if (typeof body.aceVictory === 'boolean') request.aceVictory = body.aceVictory;
   return request;
 }
 
@@ -57,6 +58,7 @@ export function parseArenaAction(input: unknown): ArenaAction {
       if (!DIRECTIONS.has(direction)) throw new GameError(`Unknown direction: ${direction}`);
       return { type, direction: direction as Direction };
     }
+    case 'playAce':
     case 'discard':
       return { type, cardId: asString(body.cardId, 'card') };
     case 'activateCard': {

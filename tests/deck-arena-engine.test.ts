@@ -24,7 +24,7 @@ const card = (label: string): Card => {
 
 /** These tests cover the plain game; abilities live in deck-arena-abilities. */
 function arena(seed = 'arena', names = ['Ada', 'Bo']): ArenaState {
-  return createGame({ players: names.map((name) => ({ name })), seed, specialAbilities: false });
+  return createGame({ players: names.map((name) => ({ name })), seed, faceCardAbilities: false, aceVictory: false });
 }
 
 /** Put the arena in a known shape: empty floor, chosen positions, whose turn. */
@@ -108,7 +108,8 @@ describe('setup', () => {
       const state = createGame({
         players: Array.from({ length: 8 }, (_, i) => ({ name: `P${i}` })),
         seed: `spawn-${seed}`,
-        specialAbilities: false,
+        faceCardAbilities: false,
+      aceVictory: false,
       });
       for (const a of state.players) {
         for (const b of state.players) {
