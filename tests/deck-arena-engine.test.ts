@@ -22,8 +22,9 @@ const card = (label: string): Card => {
   return found;
 };
 
+/** These tests cover the plain game; abilities live in deck-arena-abilities. */
 function arena(seed = 'arena', names = ['Ada', 'Bo']): ArenaState {
-  return createGame({ players: names.map((name) => ({ name })), seed });
+  return createGame({ players: names.map((name) => ({ name })), seed, specialAbilities: false });
 }
 
 /** Put the arena in a known shape: empty floor, chosen positions, whose turn. */
@@ -43,7 +44,7 @@ function place(state: ArenaState, index: number, x: number, y: number): void {
 
 function turnFor(state: ArenaState, index: number, actions = 2): void {
   state.orderIndex = state.order.indexOf(index);
-  state.turn = { roll: actions === 1 ? 2 : 5, actionsLeft: actions, freeSearchUsed: false };
+  state.turn = { roll: actions === 1 ? 2 : 5, actionsLeft: actions, freeSearchUsed: false, freeReloads: false };
 }
 
 function putCard(state: ArenaState, x: number, y: number, label: string): void {
@@ -107,6 +108,7 @@ describe('setup', () => {
       const state = createGame({
         players: Array.from({ length: 8 }, (_, i) => ({ name: `P${i}` })),
         seed: `spawn-${seed}`,
+        specialAbilities: false,
       });
       for (const a of state.players) {
         for (const b of state.players) {
@@ -400,7 +402,8 @@ describe('shooting', () => {
     act(state, { type: 'shoot', targetIndex: them });
     expect(victim.out).toBe(true);
     expect(victim.hand).toHaveLength(0);
-    expect(state.pile.some((entry) => entry.label === '5♥')).toBe(true);
+    // The killer takes what the dead player was holding.
+    expect(state.players[me]!.hand.map((entry) => entry.label)).toContain('5♥');
     expect(state.phase).toBe('over');
     expect(state.winnerIndex).toBe(me);
     expect(currentActor(state)).toBeNull();

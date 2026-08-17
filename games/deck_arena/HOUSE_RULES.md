@@ -64,7 +64,62 @@ authored rules, not by tier.
 
 ## Knock-outs and winning
 
-- A player at 0 health is out. Their hand and their equipped weapon go into the
-  face-down pile and their die leaves the board.
+- A player at 0 health is out. Their die leaves the board.
+- Whoever landed the killing blow takes the dead player's hand into their own,
+  then must discard down to three cards before doing anything else. Anything the
+  dead player had in play — their equipped weapon, their face-up aces — goes into
+  the face-down pile instead.
 - The last player standing wins. If the last two players are knocked out
   simultaneously, nobody wins.
+
+## Special abilities
+
+Special abilities are an option chosen at game start. This app turns them **on by
+default**; switch them off for the plain game. Everything in this section applies
+only when they are on — including the ace rules, which ride along with them.
+
+### The club snipers
+
+- The jack's shot wipes both overshield and armor, then deals its 1d6 straight to
+  health. It reaches as far as the board allows in one direction and hits the
+  first player in that line.
+- The queen's shot hits the first two players in one direction. Each of them
+  either loses all protection (if they had any) or dies outright (if they had
+  none). A target with an overshield loses the overshield and the armor both.
+- The king's scatter is a range-1 attack: the cell one step away in the chosen
+  direction, plus the two cells flanking it. Each occupant takes 6, absorbed by
+  protection as normal. The two directions must be different.
+- Ability shots cost one action and empty the weapon like any other shot.
+
+### Regen and revive
+
+- "Fully heal" means back to 6. The queen's overheal ceiling of 12 applies to her
+  regen ticks only, and a hero above 6 cannot be topped up by an ordinary heart.
+- A regen ticks at the start of each of your own turns. Playing a second regen
+  replaces the first.
+- Auto-revive fires by itself the moment a lethal hit lands — there is no reason
+  to decline it. It restores 6 health and leaves protection at zero.
+
+### Overshields
+
+- Overshield and armor are tracked separately. Damage hits the overshield first,
+  and whatever the overshield cannot absorb is lost rather than carried on.
+- Playing an overshield when you already have one keeps the better of the two.
+
+### The diamond reactions
+
+- Super mobility may be played out of turn. Bots resolve a whole turn inside one
+  request, so in practice the window to interrupt them is between turns rather
+  than mid-action.
+- Teleport moves you to any unoccupied cell.
+- Blitzkrieg's free reloads last until the end of the turn it was played on.
+
+### Aces
+
+- An ace goes face up the moment it reaches your hand — searched, picked up at
+  spawn, or looted from a kill — and you immediately draw a replacement from the
+  pile. This is wider than "when you search" in the authored rules, but it keeps
+  the ace-hoarding win reachable and stops a forced discard from eating an ace.
+- Playing a face-up ace for its face value costs whatever that suit normally costs
+  (a diamond is still free) and discards the ace, giving up its place in the set.
+- Collecting all four face-up aces wins the game immediately.

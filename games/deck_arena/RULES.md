@@ -60,6 +60,66 @@ battle games like Fortnite.
 - Diamonds grant bonus energy. Discarding a diamond grants one additional action
   if the value is ace (one) to six, or two additional actions if the value is
   seven or higher.
+- Whenever players play a diamond card, it does not cost anything. If a player
+  "plays" a 2 of diamonds, they do not "spend one action point to gain one action
+  point." They "spend nothing to gain one action point." This is true for any
+  diamond card, not just face cards and not just in special ability mode.
+
+### Kills
+
+- When you kill another player you collect their cards in your hand, but you must
+  discard such that you have no more than three cards in your hand.
+
+### Aces
+
+- If you draw an ace when you search, immediately play it face up and immediately
+  draw a new card from the discard pile.
+- If you hold all four aces, you win.
+- A player can always elect to play an ace as a face value of one for its suit if
+  they wish, but it will be discarded as normal in that case.
+- Face up aces do not count against the player's hand size.
+
+## Special abilities
+
+Face cards have special abilities **if special abilities are enabled for the game
+at game start**.
+
+### Clubs
+
+- **Jack of clubs — exploding sniper.** If target is wearing a shield, instantly
+  wipes the shield and deals 1d6 health damage. Can shoot the first enemy any
+  number of spaces in a single direction in [up, down, left, right].
+- **Queen of clubs — piercing sniper.** If target is wearing a shield, instantly
+  wipes the shield. If target is not wearing a shield, instantly kills. Shoots
+  the first two enemies in a row in any single direction from [up, down, left,
+  right].
+- **King of clubs — dual shotguns.** Pick two directions from up, down, left, and
+  right. Deals 6 damage in scatter shot in both directions. A scatter shot is a 1
+  unit ranged attack that damages left and right of the target cell in addition to
+  the selected target cell.
+
+### Hearts
+
+- **Jack of hearts — regen.** Fully heal. Roll 1d6 and call the result K. For the
+  next K turns, heal 1 each turn (to a max of 6 health).
+- **Queen of hearts — regen with overheal.** Fully heal. Roll 1d6 and call the
+  result K. For the next K turns, heal 1 each turn (to a max of 12 health).
+- **King of hearts — auto-revive.** If you are killed, show this card from your
+  hand and discard it. Restore to full health.
+
+### Spades
+
+- Jack, queen and king of spades are overshields worth 2, 4, or 6 points. A player
+  can equip an overshield and armor at the same time. When an overshield is
+  destroyed, no damage carries to the armor.
+
+### Diamonds
+
+- **Jack of diamonds — super mobility.** Move one space for free. You can play
+  this on another player's turn.
+- **Queen of diamonds — teleport.** Move anywhere on the map.
+- **King of diamonds — blitzkrieg.** Get +1 action. You can reload for free
+  without spending action points this turn.
 
 ## Notes
 

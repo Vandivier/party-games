@@ -30,7 +30,17 @@ export function parseNewArena(input: unknown): NewArenaRequest {
     }),
   };
   if (typeof body.seed === 'string' && body.seed.trim()) request.seed = body.seed.trim().slice(0, 64);
+  if (typeof body.specialAbilities === 'boolean') request.specialAbilities = body.specialAbilities;
   return request;
+}
+
+function parsePosition(input: unknown): { x: number; y: number } {
+  const body = asObject(input, 'cell');
+  const { x, y } = body;
+  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isInteger(x) || !Number.isInteger(y)) {
+    throw new GameError('Malformed cell.');
+  }
+  return { x, y };
 }
 
 export function parseArenaAction(input: unknown): ArenaAction {
@@ -47,15 +57,39 @@ export function parseArenaAction(input: unknown): ArenaAction {
       if (!DIRECTIONS.has(direction)) throw new GameError(`Unknown direction: ${direction}`);
       return { type, direction: direction as Direction };
     }
-    case 'activateCard':
     case 'discard':
       return { type, cardId: asString(body.cardId, 'card') };
-    case 'shoot': {
-      const target = body.targetIndex;
-      if (typeof target !== 'number' || !Number.isInteger(target) || target < 0) {
-        throw new GameError('Missing target.');
+    case 'activateCard': {
+      const action: ArenaAction = { type, cardId: asString(body.cardId, 'card') };
+      if (body.direction !== undefined) {
+        const direction = asString(body.direction, 'direction');
+        if (!DIRECTIONS.has(direction)) throw new GameError(`Unknown direction: ${direction}`);
+        action.direction = direction as Direction;
       }
-      return { type, targetIndex: target };
+      if (body.to !== undefined) action.to = parsePosition(body.to);
+      return action;
+    }
+    case 'shoot': {
+      const action: ArenaAction = { type };
+      if (body.targetIndex !== undefined) {
+        const target = body.targetIndex;
+        if (typeof target !== 'number' || !Number.isInteger(target) || target < 0) {
+          throw new GameError('Missing target.');
+        }
+        action.targetIndex = target;
+      }
+      if (body.directions !== undefined) {
+        if (!Array.isArray(body.directions) || body.directions.length > 2) {
+          throw new GameError('Malformed directions.');
+        }
+        action.directions = body.directions.map((entry) => {
+          const direction = asString(entry, 'direction');
+          if (!DIRECTIONS.has(direction)) throw new GameError(`Unknown direction: ${direction}`);
+          return direction as Direction;
+        });
+      }
+      if (action.targetIndex === undefined && !action.directions) throw new GameError('Missing target.');
+      return action;
     }
     default:
       throw new GameError(`Unknown action: ${type}`);

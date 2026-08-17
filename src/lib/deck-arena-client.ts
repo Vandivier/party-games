@@ -7,6 +7,7 @@ import type { SeatInfo } from '@/server/deck-arena-store';
 export interface NewArenaInput {
   players: { name: string; isBot: boolean }[];
   seed?: string;
+  specialAbilities?: boolean;
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {

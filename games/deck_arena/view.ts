@@ -8,7 +8,15 @@
 
 import type { Card } from '@/core/cards';
 import { currentActor, legalActions, seatAt, shotsAvailable, weaponDamage, weaponRange } from './engine';
-import { BOARD_SIZE, HAND_LIMIT, MAX_HP, MAX_SHIELD, type ArenaState, type LegalAction } from './types';
+import {
+  BOARD_SIZE,
+  HAND_LIMIT,
+  MAX_HP,
+  MAX_SHIELD,
+  type ArenaState,
+  type LegalAction,
+  type Regen,
+} from './types';
 
 export interface CellView {
   x: number;
@@ -35,6 +43,10 @@ export interface SelfView {
   y: number;
   hp: number;
   shield: number;
+  overshield: number;
+  regen: Regen | null;
+  /** Aces played face up: public, and outside the hand limit. */
+  aces: Card[];
   hand: Card[];
   weapon: WeaponView | null;
   out: boolean;
@@ -50,6 +62,9 @@ export interface OpponentView {
   y: number;
   hp: number;
   shield: number;
+  overshield: number;
+  regen: Regen | null;
+  aces: Card[];
   handCount: number;
   weapon: WeaponView | null;
   out: boolean;
@@ -60,6 +75,7 @@ export interface ArenaView {
   seat: number;
   phase: ArenaState['phase'];
   round: number;
+  specialAbilities: boolean;
   boardSize: number;
   maxHp: number;
   maxShield: number;
@@ -72,6 +88,9 @@ export interface ArenaView {
   actionRoll: number;
   actionsLeft: number;
   freeSearchAvailable: boolean;
+  freeReloads: boolean;
+  /** True while this seat must discard looted cards before anything else. */
+  mustDiscard: boolean;
   pileCount: number;
   log: string[];
   winner: { index: number; name: string } | null;
@@ -109,6 +128,7 @@ export function toView(state: ArenaState, seat: number, gameId: string): ArenaVi
     seat,
     phase: state.phase,
     round: state.round,
+    specialAbilities: state.specialAbilities,
     boardSize: BOARD_SIZE,
     maxHp: MAX_HP,
     maxShield: MAX_SHIELD,
@@ -121,6 +141,9 @@ export function toView(state: ArenaState, seat: number, gameId: string): ArenaVi
       y: you.y,
       hp: you.hp,
       shield: you.shield,
+      overshield: you.overshield,
+      regen: you.regen ? { ...you.regen } : null,
+      aces: [...you.aces],
       hand: [...you.hand],
       weapon: you.weapon
         ? {
@@ -144,6 +167,9 @@ export function toView(state: ArenaState, seat: number, gameId: string): ArenaVi
         y: player.y,
         hp: player.hp,
         shield: player.shield,
+        overshield: player.overshield,
+        regen: player.regen ? { ...player.regen } : null,
+        aces: [...player.aces],
         handCount: player.hand.length,
         weapon: player.weapon
           ? {
@@ -161,6 +187,8 @@ export function toView(state: ArenaState, seat: number, gameId: string): ArenaVi
     actionRoll: state.turn.roll,
     actionsLeft: state.turn.actionsLeft,
     freeSearchAvailable: !state.turn.freeSearchUsed,
+    freeReloads: state.turn.freeReloads,
+    mustDiscard: state.pendingDiscard === seat,
     pileCount: state.pile.length,
     log: [...state.log],
     winner: winner ? { index: winner.index, name: winner.name } : null,

@@ -5,7 +5,9 @@ export const deckArena: GameDefinition = {
   name: 'Deck Arena',
   blurb:
     'A 6x6 arena dealt face down from one poker deck. Roll for actions, loot the floor, equip ' +
-    'clubs as weapons, and shoot down the row — last player standing wins.',
+    'clubs as weapons, and shoot down the row. Optional face-card abilities add snipers, ' +
+    'shotguns, regen, overshields and teleports — last player standing wins, or whoever ' +
+    'collects all four aces.',
   minPlayers: 2,
   maxPlayers: 8,
   props: ['1 standard poker deck', '2 d6 per player (health and shield)'],

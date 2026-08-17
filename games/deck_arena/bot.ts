@@ -2,20 +2,33 @@
  * A serviceable arena opponent: shoot what it can reach, patch itself up when
  * hurt, upgrade its weapon, loot the cell it stands on, and otherwise walk
  * toward the nearest player.
+ *
+ * It understands the face-card abilities well enough to use them: it values a
+ * sniper over a pistol, spends a teleport to line up a shot, and burns
+ * blitzkrieg when it has run out of actions.
  */
 
 import type { Card } from '@/core/cards';
 import {
   cardAt,
+  clubAbility,
   currentActor,
+  diamondAbility,
+  firstTargets,
+  heartAbility,
   inBounds,
   legalActions,
+  playerAt,
+  scatterTargets,
   seatAt,
   shotsAvailable,
+  spadeAbility,
   step,
   tierOf,
+  weaponRange,
 } from './engine';
 import {
+  BOARD_SIZE,
   HAND_LIMIT,
   MAX_HP,
   type ArenaAction,
@@ -35,47 +48,62 @@ export function botAction(state: ArenaState): ArenaAction | null {
   const actions = legalActions(state);
   if (actions.length === 0) return null;
 
-  // A shot in hand is worth everything else on the turn.
-  const shots = actions.filter(is('shoot'));
-  if (shots.length > 0) {
-    const weakest = shots
-      .map((action) => ({ action, target: seatAt(state, action.targetIndex) }))
-      .filter((entry) => entry.target)
-      .sort((a, b) => effectiveHp(a.target!) - effectiveHp(b.target!))[0];
-    if (weakest) return weakest.action;
+  // Forced to shed looted cards: drop the least useful one.
+  if (state.pendingDiscard === me.index) {
+    const worst = [...me.hand].sort((a, b) => usefulness(state, me, a) - usefulness(state, me, b))[0];
+    const drop = worst && actions.filter(is('discard')).find((action) => action.cardId === worst.id);
+    return drop ?? actions[0] ?? null;
   }
 
-  // Reloading only pays if there is still an action left to fire with.
-  const reload = actions.find(is('reload'));
-  if (reload && state.turn.actionsLeft >= 2 && wouldHaveShot(state, me)) return reload;
+  // A shot in hand is worth everything else on the turn.
+  const shot = bestShot(state, me, actions);
+  if (shot) return shot;
 
-  const heal = actions.filter(is('activateCard')).find((action) => suitOf(me, action) === 'hearts');
+  const reload = actions.find(is('reload'));
+  if (reload && (reload.cost === 0 || (state.turn.actionsLeft >= 2 && wouldHaveShot(state, me)))) {
+    return reload;
+  }
+
+  const heal = actions
+    .filter(is('activateCard'))
+    .find((action) => suitOf(me, action) === 'hearts');
   if (heal && me.hp <= HURT) return heal;
 
   const upgrade = actions
     .filter(is('activateCard'))
     .filter((action) => suitOf(me, action) === 'clubs')
-    .sort((a, b) => tierOfCard(me, b) - tierOfCard(me, a))[0];
-  if (upgrade && tierOfCard(me, upgrade) > (me.weapon ? tierOf(me.weapon.card) : 0)) return upgrade;
+    .sort((a, b) => weaponWorth(state, cardFor(me, b)) - weaponWorth(state, cardFor(me, a)))[0];
+  if (upgrade && weaponWorth(state, cardFor(me, upgrade)) > weaponWorth(state, me.weapon?.card)) {
+    return upgrade;
+  }
 
-  const shield = actions
+  const armor = actions
     .filter(is('activateCard'))
-    .find((action) => suitOf(me, action) === 'spades');
-  if (shield && me.shield <= 2) return shield;
+    .filter((action) => suitOf(me, action) === 'spades')
+    .sort(
+      (a, b) =>
+        Number(Boolean(spadeAbility(state, cardFor(me, b) ?? unknownCard))) -
+        Number(Boolean(spadeAbility(state, cardFor(me, a) ?? unknownCard))),
+    )[0];
+  if (armor && me.shield + me.overshield <= 2) return armor;
 
   const search = actions.find(is('search'));
   if (search && search.cost === 0) return search;
 
   // Full hand on a loaded cell: drop the least useful card and loot instead.
   if (me.hand.length >= HAND_LIMIT && cardAt(state, me)) {
-    const worst = [...me.hand].sort((a, b) => usefulness(me, a) - usefulness(me, b))[0];
+    const worst = [...me.hand].sort((a, b) => usefulness(state, me, a) - usefulness(state, me, b))[0];
     const drop = worst && actions.filter(is('discard')).find((action) => action.cardId === worst.id);
     if (drop) return drop;
   }
 
+  const blink = teleportIntoPosition(state, me, actions);
+  if (blink) return blink;
+
   const energy = actions
     .filter(is('activateCard'))
-    .find((action) => suitOf(me, action) === 'diamonds');
+    .filter((action) => suitOf(me, action) === 'diamonds')
+    .find((action) => diamondAbility(state, cardFor(me, action) ?? unknownCard) !== 'teleport');
   if (energy && state.turn.actionsLeft === 0 && (cardAt(state, me) || me.weapon)) return energy;
 
   const move = chooseMove(state, me, actions);
@@ -85,6 +113,64 @@ export function botAction(state: ArenaState): ArenaAction | null {
   return actions.find(is('endTurn')) ?? actions[0] ?? null;
 }
 
+/** Pick the shot that takes the most out of the arena. */
+function bestShot(
+  state: ArenaState,
+  me: ArenaPlayer,
+  actions: LegalAction[],
+): ArenaAction | null {
+  const shots = actions.filter(is('shoot'));
+  if (shots.length === 0) return null;
+
+  const scored = shots.map((action) => {
+    if (action.directions && action.directions.length === 1) {
+      const direction = action.directions[0];
+      const targets = direction ? firstTargets(state, me, direction, 2) : [];
+      // The piercing sniper kills anyone without protection outright.
+      const score = targets.reduce(
+        (sum, target) => sum + (target.overshield + target.shield > 0 ? 2 : 10),
+        0,
+      );
+      return { action, score };
+    }
+    if (action.directions && action.directions.length === 2) {
+      const targets = scatterTargets(state, me, action.directions);
+      return { action, score: targets.length * 8 };
+    }
+    const target = state.players.find((player) => player.index === action.targetIndex);
+    if (!target) return { action, score: 0 };
+    return { action, score: 12 - effectiveHp(target) };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0]?.action ?? null;
+}
+
+/** Blink somewhere that opens a shot, if a teleport is in hand. */
+function teleportIntoPosition(
+  state: ArenaState,
+  me: ArenaPlayer,
+  actions: LegalAction[],
+): ArenaAction | null {
+  if (!me.weapon?.loaded) return null;
+  const teleport = actions
+    .filter(is('activateCard'))
+    .find((action) => diamondAbility(state, cardFor(me, action) ?? unknownCard) === 'teleport');
+  if (!teleport) return null;
+  if (shotsAvailable(state, me).length > 0) return null; // no need
+
+  const range = weaponRange(me.weapon.card);
+  for (let y = 1; y <= BOARD_SIZE; y++) {
+    for (let x = 1; x <= BOARD_SIZE; x++) {
+      if (playerAt(state, { x, y })) continue;
+      const from: ArenaPlayer = { ...me, x, y };
+      const shots = shotsAvailable(state, from).filter((shot) => shot.distance <= range);
+      if (shots.length > 0) return { ...teleport, to: { x, y } };
+    }
+  }
+  return null;
+}
+
 /** Walk toward the nearest player, preferring a step that lines up a shot. */
 function chooseMove(
   state: ArenaState,
@@ -92,24 +178,29 @@ function chooseMove(
   actions: LegalAction[],
 ): ArenaAction | null {
   const moves = actions.filter(is('move'));
-  if (moves.length === 0) return null;
+  const steps: (Extract<LegalAction, { type: 'move' }> | Extract<LegalAction, { type: 'activateCard' }>)[] =
+    [...moves, ...actions.filter(is('activateCard')).filter((action) => action.direction)];
+  if (steps.length === 0) return null;
 
   const prey = state.players
     .filter((player) => !player.out && player.index !== me.index)
     .sort((a, b) => distance(me, a) - distance(me, b))[0];
   if (!prey) return null;
 
-  const scored: { action: Extract<LegalAction, { type: 'move' }>; score: number }[] = [];
-  for (const action of moves) {
-    const to = step(me, action.direction);
+  const scored: { action: ArenaAction; score: number }[] = [];
+  for (const action of steps) {
+    const direction = 'direction' in action ? action.direction : undefined;
+    if (!direction) continue;
+    const to = step(me, direction);
     if (!inBounds(to)) continue;
     const closer = distance(prey, me) - distance(prey, to);
     const lines = to.x === prey.x || to.y === prey.y ? 1 : 0;
     const loot = cardAt(state, to) && me.hand.length < HAND_LIMIT ? 1 : 0;
-    scored.push({ action, score: closer * 3 + lines * 2 + loot });
+    // A free step from super mobility is worth taking over a paid one.
+    const free = action.type === 'activateCard' ? 1 : 0;
+    scored.push({ action, score: closer * 3 + lines * 2 + loot + free });
   }
   scored.sort((a, b) => b.score - a.score);
-
   return scored[0]?.action ?? null;
 }
 
@@ -117,38 +208,59 @@ function chooseMove(
 function wouldHaveShot(state: ArenaState, me: ArenaPlayer): boolean {
   if (!me.weapon) return false;
   const pretend: ArenaPlayer = { ...me, weapon: { ...me.weapon, loaded: true } };
-  return shotsAvailable(state, pretend).length > 0;
+  if (shotsAvailable(state, pretend).length > 0) return true;
+  const ability = clubAbility(state, me.weapon.card);
+  if (!ability) return false;
+  return (['north', 'south', 'east', 'west'] as const).some(
+    (direction) => firstTargets(state, me, direction, 1).length > 0,
+  );
 }
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
   Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-const effectiveHp = (player: ArenaPlayer): number => player.hp + player.shield;
+const effectiveHp = (player: ArenaPlayer): number =>
+  player.hp + player.shield + player.overshield;
 
-function cardInHand(player: ArenaPlayer, cardId: string): Card | undefined {
-  return player.hand.find((card) => card.id === cardId);
+/** A stand-in for lookups that miss, so ability checks stay total. */
+const unknownCard = { id: '', rank: '2', suit: 'clubs', symbol: '♣', value: 2, label: '2♣' } as Card;
+
+function cardFor(player: ArenaPlayer, action: { cardId: string }): Card | undefined {
+  return (
+    player.hand.find((card) => card.id === action.cardId) ??
+    player.aces.find((card) => card.id === action.cardId)
+  );
 }
 
 function suitOf(player: ArenaPlayer, action: { cardId: string }): string | undefined {
-  return cardInHand(player, action.cardId)?.suit;
+  return cardFor(player, action)?.suit;
 }
 
-function tierOfCard(player: ArenaPlayer, action: { cardId: string }): number {
-  const card = cardInHand(player, action.cardId);
-  return card ? tierOf(card) : 0;
+/** Face clubs beat any pip weapon; otherwise the tier decides. */
+function weaponWorth(state: ArenaState, card: Card | undefined): number {
+  if (!card) return 0;
+  const ability = clubAbility(state, card);
+  if (ability === 'shotgun') return 7;
+  if (ability === 'piercing') return 6;
+  if (ability === 'exploding') return 5;
+  return tierOf(card);
 }
 
 /** Rough keep-or-drop score for a card in hand. */
-function usefulness(player: ArenaPlayer, card: Card): number {
+function usefulness(state: ArenaState, player: ArenaPlayer, card: Card): number {
   switch (card.suit) {
     case 'clubs':
-      return tierOf(card) > (player.weapon ? tierOf(player.weapon.card) : 0) ? 10 + tierOf(card) : 1;
+      return weaponWorth(state, card) > weaponWorth(state, player.weapon?.card)
+        ? 10 + weaponWorth(state, card)
+        : 1;
     case 'hearts':
+      if (heartAbility(state, card) === 'auto-revive') return 12;
+      if (heartAbility(state, card)) return 9;
       return player.hp < MAX_HP ? 6 + tierOf(card) : 3;
     case 'spades':
-      return 5 + tierOf(card);
+      return spadeAbility(state, card) ? 8 + tierOf(card) : 5 + tierOf(card);
     default:
-      return 4;
+      return diamondAbility(state, card) ? 7 : 4;
   }
 }
 

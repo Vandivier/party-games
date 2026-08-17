@@ -6,7 +6,7 @@
  * decisions — and the cards they can see — never reach a browser.
  */
 
-import { act, createGame, currentActor } from '@games/deck_arena/engine';
+import { act, createGame, currentActor, isReaction } from '@games/deck_arena/engine';
 import { botAction } from '@games/deck_arena/bot';
 import { toView, type ArenaView } from '@games/deck_arena/view';
 import type { ArenaAction, ArenaState } from '@games/deck_arena/types';
@@ -29,6 +29,7 @@ interface Session {
 export interface NewArenaRequest {
   players: { name: string; isBot?: boolean }[];
   seed?: string;
+  specialAbilities?: boolean;
 }
 
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000;
@@ -43,7 +44,11 @@ const sessions: Map<string, Session> = ((
 
 export function createSession(request: NewArenaRequest): { view: ArenaView; seats: SeatInfo[] } {
   const players = normalizePlayers(request.players);
-  const state = createGame({ players, ...(request.seed ? { seed: request.seed } : {}) });
+  const state = createGame({
+    players,
+    ...(request.seed ? { seed: request.seed } : {}),
+    ...(request.specialAbilities === undefined ? {} : { specialAbilities: request.specialAbilities }),
+  });
 
   const id = newId();
   const session: Session = {
@@ -69,9 +74,10 @@ export function getView(gameId: string, seat: number): ArenaView {
 export function applyAction(gameId: string, seat: number, action: ArenaAction): ArenaView {
   const session = requireSession(gameId);
   requireSeat(session, seat);
-  requireTurn(session, seat);
+  // Super mobility is playable out of turn; everything else waits its turn.
+  if (!isReaction(session.state, seat, action)) requireTurn(session, seat);
 
-  const result = act(session.state, action);
+  const result = act(session.state, action, seat);
   if (!result.ok) throw new GameError(result.error ?? 'Illegal action.');
   session.updatedAt = Date.now();
   runBots(session);

@@ -10,7 +10,7 @@ import {
   type NewArenaInput,
 } from '@/lib/deck-arena-client';
 import { PlayingCard } from '@/components/PlayingCard';
-import { SeatForm } from '@/components/SeatForm';
+import { SeatForm, type SeatFormValue } from '@/components/SeatForm';
 import { ArenaBoard, seatColor } from './ArenaBoard';
 
 const STORAGE_KEY = 'party-games:deck-arena';
@@ -20,6 +20,8 @@ export function ArenaTable() {
   const [view, setView] = useState<ArenaView | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Set while a teleport is waiting for the player to pick a cell. */
+  const [teleportCardId, setTeleportCardId] = useState<string | null>(null);
 
   const run = useCallback(async (task: () => Promise<{ view: ArenaView }>) => {
     setBusy(true);
@@ -27,6 +29,7 @@ export function ArenaTable() {
     try {
       const { view: next } = await task();
       setView(next);
+      setTeleportCardId(null);
       window.localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({ gameId: next.gameId, seat: next.seat }),
@@ -55,7 +58,14 @@ export function ArenaTable() {
       .catch(() => window.localStorage.removeItem(STORAGE_KEY));
   }, []);
 
-  const start = (input: NewArenaInput) => run(() => createArena(input).then(({ view: v }) => ({ view: v })));
+  const start = (value: SeatFormValue) => {
+    const input: NewArenaInput = {
+      players: value.players,
+      specialAbilities: value.flags.abilities ?? true,
+      ...(value.seed ? { seed: value.seed } : {}),
+    };
+    return run(() => createArena(input).then(({ view: v }) => ({ view: v })));
+  };
   const take = (action: ArenaAction) => view && run(() => sendAction(view.gameId, view.seat, action));
   const takeSeat = (seat: number) => view && run(() => fetchView(view.gameId, seat));
 
@@ -78,6 +88,14 @@ export function ArenaTable() {
             { name: 'Bot', isBot: true },
           ]}
           note="Two to eight fighters. Bots play themselves; humans share this screen, hot-seat style."
+          toggles={[
+            {
+              key: 'abilities',
+              label: 'Special abilities',
+              hint: 'face-card abilities and ace collecting',
+              defaultValue: true,
+            },
+          ]}
           submitLabel="Drop in"
         />
       </div>
@@ -94,6 +112,11 @@ export function ArenaTable() {
   const endTurn = byType('endTurn')[0];
   const cardActions = byType('activateCard');
   const discards = byType('discard');
+  // The one card playable off-turn; the server has the final say on legality.
+  const reactions =
+    view.specialAbilities && !view.you.out && view.phase === 'play' && !view.isYourTurn
+      ? view.you.hand.filter((card) => card.suit === 'diamonds' && card.rank === 'J')
+      : [];
   const waitingHuman = view.opponents.find(
     (opponent) => opponent.index === view.turnPlayerIndex && !opponent.isBot && !opponent.out,
   );
@@ -124,7 +147,24 @@ export function ArenaTable() {
 
       <div className="table-layout">
         <div className="stack">
-          <ArenaBoard view={view} />
+          <ArenaBoard
+            view={view}
+            {...(teleportCardId
+              ? {
+                  onPick: (cell: { x: number; y: number }) =>
+                    take({ type: 'activateCard', cardId: teleportCardId, to: cell }),
+                }
+              : {})}
+          />
+
+          {teleportCardId ? (
+            <div className="banner">
+              Pick an empty cell to blink to.{' '}
+              <button type="button" className="tiny" onClick={() => setTeleportCardId(null)}>
+                Cancel
+              </button>
+            </div>
+          ) : null}
 
           <section className="panel stack">
             <div className="board-head">
@@ -133,8 +173,28 @@ export function ArenaTable() {
               </span>
               <span className="small muted">
                 {view.you.hp}/{view.maxHp} hp · {view.you.shield} shield
+                {view.you.overshield > 0 ? ` · ${view.you.overshield} overshield` : ''}
+                {view.you.regen
+                  ? ` · regen ${view.you.regen.turnsLeft} turn${view.you.regen.turnsLeft === 1 ? '' : 's'}`
+                  : ''}
               </span>
             </div>
+
+            {view.specialAbilities ? (
+              <div className="row small">
+                <h3 style={{ margin: 0 }}>Aces</h3>
+                {view.you.aces.length === 0 ? (
+                  <span className="muted">none — collect all four to win</span>
+                ) : (
+                  <>
+                    {view.you.aces.map((ace) => (
+                      <PlayingCard key={ace.id} card={ace} small />
+                    ))}
+                    <span className="muted">{view.you.aces.length}/4</span>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <div className="row small">
               <h3 style={{ margin: 0 }}>Weapon</h3>
@@ -161,22 +221,36 @@ export function ArenaTable() {
               ) : (
                 <div className="hand-row">
                   {view.you.hand.map((card) => {
-                    const use = cardActions.find((action) => action.cardId === card.id);
+                    const uses = cardActions.filter((action) => action.cardId === card.id);
                     const drop = discards.find((action) => action.cardId === card.id);
+                    const teleports =
+                      view.specialAbilities && card.suit === 'diamonds' && card.rank === 'Q';
                     return (
                       <div key={card.id} className="hand-card">
                         <PlayingCard card={card} />
-                        {use ? (
+                        {teleports && uses.length > 0 ? (
                           <button
                             type="button"
                             className="primary tiny"
                             disabled={busy}
-                            onClick={() => take(use)}
+                            onClick={() => setTeleportCardId(card.id)}
                           >
-                            {use.label.replace(/^(Equip|Play) \S+ — /, '')}
-                            {use.cost === 0 ? ' (free)' : ''}
+                            Teleport (free)
                           </button>
-                        ) : null}
+                        ) : (
+                          uses.map((use) => (
+                            <button
+                              key={use.label}
+                              type="button"
+                              className="primary tiny"
+                              disabled={busy}
+                              onClick={() => take(use)}
+                            >
+                              {use.label.replace(/^(Equip|Play) \S+ — /, '')}
+                              {use.cost === 0 ? ' (free)' : ''}
+                            </button>
+                          ))
+                        )}
                         {drop ? (
                           <button type="button" className="tiny" disabled={busy} onClick={() => take(drop)}>
                             Discard
@@ -195,11 +269,38 @@ export function ArenaTable() {
               <p className="muted" style={{ margin: 0 }}>
                 The arena is closed.
               </p>
+            ) : view.mustDiscard ? (
+              <div className="stack">
+                <div className="banner attack">
+                  You looted the kill. Discard down to {view.handLimit} cards before anything else.
+                </div>
+              </div>
             ) : !view.isYourTurn ? (
               <div className="stack">
                 <p className="muted" style={{ margin: 0 }}>
                   Waiting on {view.turnPlayerName}.
                 </p>
+                {reactions.length > 0 ? (
+                  <div className="stack" style={{ gap: '0.35rem' }}>
+                    <h3 style={{ margin: 0 }}>Super mobility — playable out of turn</h3>
+                    <div className="action-list">
+                      {reactions.map((card) =>
+                        (['north', 'south', 'east', 'west'] as const).map((direction) => (
+                          <button
+                            key={`${card.id}-${direction}`}
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              take({ type: 'activateCard', cardId: card.id, direction })
+                            }
+                          >
+                            {card.label} — step {direction}
+                          </button>
+                        )),
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 {waitingHuman ? (
                   <div className="row">
                     <button
@@ -298,7 +399,11 @@ export function ArenaTable() {
                     <span className="small muted">
                       {player.out
                         ? 'knocked out'
-                        : `${player.hp} hp · ${player.shield} shield · ${player.handCount} cards` +
+                        : `${player.hp} hp · ${player.shield} shield` +
+                          (player.overshield > 0 ? ` +${player.overshield} over` : '') +
+                          ` · ${player.handCount} cards` +
+                          (player.aces.length > 0 ? ` · ${player.aces.length} ace` : '') +
+                          (player.regen ? ' · regen' : '') +
                           (player.weapon
                             ? player.weapon.revealed
                               ? ` · ${player.weapon.card?.label}`

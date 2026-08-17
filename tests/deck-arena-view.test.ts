@@ -13,7 +13,7 @@ const card = (label: string): Card => {
 };
 
 function arena(seed = 'view'): ArenaState {
-  return createGame({ players: [{ name: 'Ada' }, { name: 'Bo' }], seed });
+  return createGame({ players: [{ name: 'Ada' }, { name: 'Bo' }], seed, specialAbilities: false });
 }
 
 describe('per-seat view', () => {
@@ -41,18 +41,18 @@ describe('per-seat view', () => {
     state.board.fill(null);
     Object.assign(state.players[them]!, { x: 1, y: 1 });
     Object.assign(state.players[me]!, { x: 1, y: 3 });
-    state.players[them]!.weapon = { card: card('K♣'), loaded: true, revealed: false };
+    state.players[them]!.weapon = { card: card('10♣'), loaded: true, revealed: false };
     state.orderIndex = state.order.indexOf(them);
-    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false };
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
 
     const hidden = toView(state, me, 'a').opponents.find((entry) => entry.index === them);
     expect(hidden?.weapon).toMatchObject({ revealed: false, card: null, loaded: true });
-    expect(JSON.stringify(hidden)).not.toContain('K♣');
+    expect(JSON.stringify(hidden)).not.toContain('10♣');
 
     act(state, { type: 'shoot', targetIndex: me });
     const shown = toView(state, me, 'a').opponents.find((entry) => entry.index === them);
     expect(shown?.weapon).toMatchObject({ revealed: true, loaded: false, damage: 3, range: 6 });
-    expect(shown?.weapon?.card?.label).toBe('K♣');
+    expect(shown?.weapon?.card?.label).toBe('10♣');
   });
 
   it('offers legal actions only to the seat on the clock', () => {

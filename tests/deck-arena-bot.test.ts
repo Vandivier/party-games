@@ -40,14 +40,15 @@ describe('bot', () => {
         { name: 'Hurt' },
       ],
       seed: 'aim',
+      specialAbilities: false,
     });
     const [me, healthy, hurt] = [state.order[0]!, state.order[1]!, state.order[2]!];
     state.orderIndex = 0;
-    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false };
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
     Object.assign(state.players[me]!, { x: 1, y: 1 });
     Object.assign(state.players[healthy]!, { x: 4, y: 1, hp: MAX_HP });
     Object.assign(state.players[hurt]!, { x: 1, y: 4, hp: 1 });
-    state.players[me]!.weapon = { card: card('K♣'), loaded: true, revealed: false };
+    state.players[me]!.weapon = { card: card('10♣'), loaded: true, revealed: false };
 
     expect(botAction(state)).toMatchObject({ type: 'shoot', targetIndex: hurt });
   });
@@ -58,7 +59,7 @@ describe('bot', () => {
       seed: 'loot',
     });
     state.orderIndex = 0;
-    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false };
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
     const me = state.players[state.order[0]!]!;
     me.hand = [];
     state.board[(me.y - 1) * 6 + (me.x - 1)] = card('9♣');
@@ -73,7 +74,7 @@ describe('bot', () => {
     });
     state.board.fill(null);
     state.orderIndex = 0;
-    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false };
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
     const me = state.players[state.order[0]!]!;
     const prey = state.players[state.order[1]!]!;
     me.hand = [];
@@ -90,7 +91,7 @@ describe('bot', () => {
     });
     state.board.fill(null);
     state.orderIndex = 0;
-    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false };
+    state.turn = { roll: 5, actionsLeft: 2, freeSearchUsed: false, freeReloads: false };
     const me = state.players[state.order[0]!]!;
     me.hp = 2;
     me.hand = [card('J♥')];

@@ -5,6 +5,10 @@ export const BOARD_SIZE = 6;
 export const MAX_HP = 6;
 export const MAX_SHIELD = 6;
 export const HAND_LIMIT = 3;
+/** The queen of hearts' regen may push health this far past the normal cap. */
+export const OVERHEAL_CAP = 12;
+/** Face-up aces needed to win outright. */
+export const ACES_TO_WIN = 4;
 
 export type Direction = 'north' | 'south' | 'east' | 'west';
 
@@ -23,14 +27,25 @@ export interface EquippedWeapon {
   revealed: boolean;
 }
 
+export interface Regen {
+  turnsLeft: number;
+  /** 6 for the jack of hearts, 12 for the queen. */
+  max: number;
+}
+
 export interface ArenaPlayer extends Position {
   index: number;
   name: string;
   isBot: boolean;
   hp: number;
   shield: number;
+  /** Overshield from a face spade: absorbs a hit whole, never spills over. */
+  overshield: number;
   hand: Card[];
+  /** Aces played face up. They do not count against the hand limit. */
+  aces: Card[];
   weapon: EquippedWeapon | null;
+  regen: Regen | null;
   out: boolean;
 }
 
@@ -39,6 +54,8 @@ export interface TurnState {
   roll: number;
   actionsLeft: number;
   freeSearchUsed: boolean;
+  /** Blitzkrieg: reloads cost nothing for the rest of this turn. */
+  freeReloads: boolean;
 }
 
 export type ArenaPhase = 'play' | 'over';
@@ -46,6 +63,8 @@ export type ArenaPhase = 'play' | 'over';
 export interface ArenaState {
   rng: Random;
   seed: string;
+  /** Face-card abilities, and the ace rules that ride with them. */
+  specialAbilities: boolean;
   /** 36 cells, row-major: index = (y - 1) * 6 + (x - 1). */
   board: (Card | null)[];
   /** The face-down pile: the 16 unused cards plus everything discarded since. */
@@ -57,6 +76,8 @@ export interface ArenaState {
   orderIndex: number;
   round: number;
   turn: TurnState;
+  /** A seat holding looted cards that must discard down to the hand limit. */
+  pendingDiscard: number | null;
   phase: ArenaPhase;
   winnerIndex: number | null;
   log: string[];
@@ -65,8 +86,21 @@ export interface ArenaState {
 export type ArenaAction =
   | { type: 'move'; direction: Direction }
   | { type: 'search' }
-  | { type: 'activateCard'; cardId: string }
-  | { type: 'shoot'; targetIndex: number }
+  | {
+      type: 'activateCard';
+      cardId: string;
+      /** Super mobility: the step to take. */
+      direction?: Direction;
+      /** Teleport: where to land. */
+      to?: Position;
+    }
+  | {
+      type: 'shoot';
+      /** Ordinary weapons and the exploding sniper name a target. */
+      targetIndex?: number;
+      /** The piercing sniper takes one direction, the dual shotguns two. */
+      directions?: Direction[];
+    }
   | { type: 'reload' }
   | { type: 'discard'; cardId: string }
   | { type: 'endTurn' };
@@ -81,4 +115,6 @@ export interface ActionResult {
 export interface CreateGameOptions {
   players: { name: string; isBot?: boolean }[];
   seed?: string | number;
+  /** Defaults to true: face-card abilities and ace collecting. */
+  specialAbilities?: boolean;
 }
