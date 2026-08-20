@@ -26,6 +26,7 @@ export function SeatForm({
   onStart,
   busy,
   maxSeats,
+  minSeats = 2,
   defaultSeats,
   note,
   toggles = [],
@@ -34,6 +35,8 @@ export function SeatForm({
   onStart: (value: SeatFormValue) => void;
   busy: boolean;
   maxSeats: number;
+  /** Smallest legal table. The Remove button stops here. */
+  minSeats?: number;
   defaultSeats: Seat[];
   note: string;
   toggles?: SeatFormToggle[];
@@ -56,7 +59,7 @@ export function SeatForm({
     );
 
   const removeSeat = () =>
-    setSeats((current) => (current.length <= 2 ? current : current.slice(0, -1)));
+    setSeats((current) => (current.length <= minSeats ? current : current.slice(0, -1)));
 
   const humans = seats.filter((seat) => !seat.isBot).length;
 
@@ -92,7 +95,7 @@ export function SeatForm({
         <button type="button" onClick={addSeat} disabled={seats.length >= maxSeats}>
           Add seat
         </button>
-        <button type="button" onClick={removeSeat} disabled={seats.length <= 2}>
+        <button type="button" onClick={removeSeat} disabled={seats.length <= minSeats}>
           Remove seat
         </button>
         <label className="inline">

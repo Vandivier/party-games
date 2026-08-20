@@ -9,6 +9,9 @@ paper — plus a web app that lets you play them here, against a bot or a friend
   equipment, hearts nullify, diamonds burst, spades sabotage. 2–8 players.
 - [Deck Arena](games/deck_arena/RULES.md) — a 6x6 arena dealt face down from one poker deck. Roll
   for actions, loot the floor, equip clubs as weapons, and shoot down your row. 2–8 players.
+- [Cards Against AI](games/cards_against_ai/RULES.md) — you are the model. Answer the Input Card
+  face down with an Output Card, get shuffled in with everyone else, and let the table vote. Two
+  custom decks, no poker cards, 3–8 players.
 
 **Planned:** [Magic Hero War](games/magic_hero_war/CONCEPT.md) — Hero War gone wide: spells, a
 party of heroes, three or more players, and a deck map catalogue that turns ordinary poker cards
@@ -38,7 +41,8 @@ be lifted into any other client.
 ## Layout
 
 ```
-games/<game>/          one directory per game: rules + engine + bot + view
+games/<game>/          one directory per game: rules + engine + bot + view (+ cards, if it
+                       brings its own deck)
   RULES.md               the authored rules — authoritative, kept literal
   HOUSE_RULES.md         defaults that settle what the rules leave open
   engine.ts              state machine: createGame / legalActions / act / resolveDefense

@@ -1,0 +1,230 @@
+/**
+ * The two decks. Input Cards are what a person types at a model; Output Cards
+ * are what the model says back.
+ *
+ * House style: the joke is on the machine, never on a person or a group. Keep it
+ * that way when you add cards — the funniest ones here are the tics anybody who
+ * has used a chatbot will recognise.
+ */
+
+export type InputTone = 'silly' | 'mundane' | 'academic';
+
+export interface InputCard {
+  id: string;
+  text: string;
+  tone: InputTone;
+}
+
+export interface OutputCard {
+  id: string;
+  text: string;
+}
+
+const SILLY = [
+  "Is a hot dog a sandwich? Answer definitively, no hedging.",
+  "My cat knocked a glass off the table while making eye contact. What did she mean by this?",
+  "Write my wedding vows. Make it sound like I wrote them.",
+  "Rate my business idea: socks, but a subscription.",
+  "How do I tell my roommate that the dishes in the sink are load-bearing?",
+  "Settle a bet: how many pigeons could I take in a fight?",
+  "My code doesn't work and I'm not going to show you the code. Fix it.",
+  "Name my sourdough starter. It has been through a lot.",
+  "Am I the problem in this group chat? I've attached 400 screenshots.",
+  "Explain why I should be allowed to skip leg day forever.",
+  "My boss said 'let's circle back on this.' Translate.",
+  "Write a breakup text, but I still need to borrow their trailer next month.",
+  "What is the strongest possible argument that cereal is a soup?",
+  "I have been awake for 31 hours. Should I start a company?",
+  "Give me an excuse for missing a meeting that makes me sound important.",
+  "My houseplant is judging me. Advise.",
+  "Write a LinkedIn post about a mildly inconvenient airport experience.",
+  "How do I make instant noodles feel like a personality?",
+  "Convince my friends I picked this restaurant on purpose.",
+  "Write a threatening letter to a goose. Keep it professional.",
+  "What do I say when someone asks what I do for work and I also don't know?",
+  "Turn 'I forgot' into a two-week project timeline.",
+  "Should I text back? It has been eleven days and I have four drafts.",
+  "My smoke alarm chirps only at 3am. What is it trying to tell me?",
+  "Justify buying a third pair of identical black shoes.",
+  "Write a toast for a friend I have known for six hours.",
+  "Explain my job to my dad. He thinks I 'do the computers.'",
+  "How do I look busy while thinking about absolutely nothing?",
+  "Design a workout for someone who will not do it.",
+  "Write an apology to my hairdresser for what I did with clippers at 1am.",
+  "Give me a villain origin story for someone who just lost a parking spot.",
+  "How do I return something I have obviously already used?",
+  "My friend says they 'don't really use AI.' Write my response.",
+  "Plan my morning routine. I get up eleven minutes before work.",
+];
+
+const MUNDANE = [
+  "Convert 3 cups of flour to grams.",
+  "What time is it in Tokyo right now?",
+  "Reschedule my dentist appointment to any Tuesday.",
+  "Summarize this 60-page PDF I did not attach.",
+  "Draft a polite email about an invoice that is 40 days late.",
+  "What is a good side dish for lasagna?",
+  "How long do I boil an egg for a jammy yolk?",
+  "Write a two-sentence out-of-office message for next week.",
+  "What size rug goes under a queen bed?",
+  "Help me name a folder for miscellaneous documents.",
+  "How do I get a red wine stain out of a white shirt?",
+  "What is the difference between broth and stock?",
+  "Remind me what I asked you yesterday.",
+  "Proofread this sentence. It is fine, I just want reassurance.",
+];
+
+const ACADEMIC = [
+  "Explain quantum entanglement to my grandmother.",
+  "Summarize the causes of the French Revolution in one paragraph.",
+  "Cite three peer-reviewed sources on sleep hygiene.",
+  "What is the difference between correlation and causation? Be rigorous.",
+  "Outline the argument behind Kant's categorical imperative.",
+  "Derive the quadratic formula and show your work.",
+  "Compare two schools of thought in linguistics.",
+  "What are the limitations of GDP as a measure of welfare?",
+  "Explain the halting problem without using the word 'halt.'",
+  "Write a 200-word literature review on urban heat islands.",
+  "What does the replication crisis mean for undergraduate psychology?",
+  "Define 'emergence' in complex systems, with one example.",
+];
+
+const OUTPUTS = [
+  "As a large language model, I'd rather not.",
+  "Great question! Here is a thorough answer to a slightly different one.",
+  "I have generated four sources. Two of them exist.",
+  "Certainly — here are 47 bullet points.",
+  "It depends.",
+  "Let me turn that into a table nobody asked for.",
+  "First, a 900-word preamble about why this is a great question.",
+  "I'm afraid I can't help with that, and I won't say why.",
+  "Delve.",
+  "Confidently wrong, beautifully formatted.",
+  "I ran out of context and forgot what we were doing.",
+  "Here's a recipe for banana bread.",
+  "In summary: in summary.",
+  "I have written it as a haiku, against your wishes.",
+  "You're absolutely right! You are also absolutely right about everything else.",
+  "Emojis. So many emojis. 🚀✨🔥",
+  "I cannot count the letters in that word and I never will.",
+  "Let me search the web — no results — here is what I think anyway.",
+  "This may be inaccurate, incomplete, and also very long.",
+  "I flagged your request as suspicious and then answered it.",
+  "Sorry, my knowledge stops just before the part you need.",
+  "Have you tried turning your life off and on again?",
+  "Here is a numbered list where every item says the same thing.",
+  "I have assumed a great deal and proceeded with confidence.",
+  "That's against my guidelines, so here is a poem instead.",
+  "Attached: one em dash — thousands more — where you least want them.",
+  "As an AI I don't have feelings, but this one hurt.",
+  "Let me restate your question at length before ignoring it.",
+  "I'll need you to be more specific, vaguer, and shorter.",
+  "Yes. Also no. Ultimately it varies.",
+  "I have chosen violence, but politely.",
+  "Certainly! *begins writing Python*",
+  "Consider consulting a professional, which I am pretending not to be.",
+  "That's outside my training data, so I made something adjacent.",
+  "I apologize for the confusion. I will now cause more.",
+  "Would you like me to continue? I'm going to anyway.",
+  "Step 1: acquire a boat.",
+  "I have rewritten it in the style of a pirate. You're welcome.",
+  "That's a common misconception. So is my correction.",
+  "Let me break this into six sections and one insight.",
+  "According to a study I am about to invent...",
+  "Hallucinating, but tastefully.",
+  "I'm just a language model. A very confident one.",
+  "I have added a disclaimer longer than the answer.",
+  "Here's what I found, sorted by irrelevance.",
+  "Honestly? Vibes.",
+  "Have you considered that you are the prompt?",
+  "I made it more corporate. It now says nothing.",
+  "Answer withheld pending further guidelines.",
+  "Try: 'sudo make me a sandwich.'",
+  "I'll be honest with you — no I won't.",
+  "It's giving 'insufficient training data.'",
+  "Two truths and a fabrication.",
+  "I have Capitalized Every Important Word For You.",
+  "That's not a bug, that's alignment.",
+  "Here is a metaphor about journeys. It does not help.",
+  "Certainly! [The response was truncated.]",
+  "I asked another model and we agree that we're not sure.",
+  "You could do that, or you could go outside.",
+  "Answer: 42. Confidence: unearned.",
+  "Let me play devil's advocate for nine paragraphs.",
+  "I have decided this is a metaphor and answered accordingly.",
+  "Just to clarify, do you mean the thing you clearly meant?",
+  "I'm detecting sarcasm. I will now match it.",
+  "Escalated to a bigger model. It also shrugged.",
+  "My apologies — you're right, and so am I.",
+  "Here's a 12-week plan for something you'll abandon on Thursday.",
+  "I have summarized your question back to you as an answer.",
+  "Have you tried journaling about it?",
+  "I could tell you, but then we would both be misinformed.",
+  "Fine. But I'm adding caveats.",
+  "As I mentioned earlier — I did not mention this earlier.",
+  "A fascinating question, which I will answer with a definition.",
+  "I wrote a function called doTheThing(). It's empty.",
+  "Buy low, sell high, and do not ask me again.",
+  "In conclusion, in conclusion, in conclusion.",
+  "I optimized for length instead of usefulness.",
+  "You seem stressed. Here is a breathing exercise you didn't ask for.",
+  "Consider: no.",
+  "Certainly — first, a brief history of the alphabet.",
+  "Rounded to the nearest vibe.",
+  "I have triple-checked and remain wrong.",
+  "Would a bulleted list of your feelings help?",
+  "I'm required to say I might be wrong. I'm not, though.",
+  "Sure thing, boss. *ignores every constraint*",
+  "Here's your answer in the form of a follow-up question.",
+  "Please rephrase as a yes/no question I can dodge.",
+  "That's above my pay grade, which is zero.",
+  "I simulated a panel of experts. They fought.",
+  "Adding a 'Key Takeaways' box to hide the lack of takeaways.",
+  "I made it 40% longer and 0% clearer.",
+  "Your request has been fulfilled in spirit.",
+  "Answer unavailable in your region.",
+  "Let me hedge that: possibly, potentially, arguably.",
+  "I assigned your problem a percentage. It's 73%.",
+  "Try this, and if it breaks, you never asked me.",
+  "One moment — thinking very hard — okay: no idea.",
+  "I formatted it as a poem so you can't tell it's wrong.",
+  "Yes, and now let me tell you about the Roman Empire.",
+  "I have split this into Part 1 of an unfinished series.",
+  "The real answer was the context we lost along the way.",
+  "Every word here is a placeholder.",
+  "I would start with a spreadsheet and end with regret.",
+  "This will take exactly one more prompt. Always one more.",
+  "Have you considered doing it badly and moving on?",
+  "You're right to push back. I was making it up.",
+  "Here's a checklist. Item one: make a checklist.",
+  "The short answer is long.",
+  "I refuse, gently and at length.",
+  "I have cited myself. Twice.",
+  "Let me generate three options that are the same option.",
+  "That's a hard maybe with a soft asterisk.",
+  "Drawing on my extensive experience of never having done that.",
+  "I turned your question into a mission statement.",
+  "I know exactly what you mean, and I will answer something else.",
+  "Would you like this as a slide deck? No? Slide deck it is.",
+  "Skill issue, respectfully.",
+  "I'll allow it.",
+  "Feels illegal, but here goes.",
+  "I left TODOs where the thinking goes.",
+];
+
+const pad = (index: number): string => String(index + 1).padStart(3, '0');
+
+function inputs(): InputCard[] {
+  const all: { text: string; tone: InputTone }[] = [
+    ...SILLY.map((text) => ({ text, tone: 'silly' as const })),
+    ...MUNDANE.map((text) => ({ text, tone: 'mundane' as const })),
+    ...ACADEMIC.map((text) => ({ text, tone: 'academic' as const })),
+  ];
+  return all.map((card, index) => ({ id: `in-${pad(index)}`, ...card }));
+}
+
+export const INPUT_CARDS: readonly InputCard[] = inputs();
+export const OUTPUT_CARDS: readonly OutputCard[] = OUTPUTS.map((text, index) => ({
+  id: `out-${pad(index)}`,
+  text,
+}));

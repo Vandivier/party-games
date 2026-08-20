@@ -657,6 +657,122 @@ button.tiny {
   grid-row: span 2;
 }
 
+/* --------------------------------------------------------- cards against ai */
+
+.prompt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(160deg, #14161a, #0a0c0f);
+  padding: 1.2rem 1.3rem;
+  box-shadow: var(--shadow);
+}
+
+.prompt-card p {
+  margin: 0;
+  font-size: 1.3rem;
+  line-height: 1.35;
+  font-weight: 600;
+  max-width: 34ch;
+}
+
+.tag.tone-silly {
+  border-color: rgba(232, 195, 122, 0.55);
+  color: var(--gold);
+}
+
+.tag.tone-mundane {
+  border-color: rgba(111, 194, 240, 0.5);
+  color: #9ad3f2;
+}
+
+.tag.tone-academic {
+  border-color: rgba(143, 214, 148, 0.5);
+  color: #a6e0aa;
+}
+
+.answer-grid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.answer-card {
+  position: relative;
+  min-height: 5.5rem;
+  padding: 0.85rem 0.9rem;
+  text-align: left;
+  border-radius: var(--radius);
+  background: var(--card-face);
+  color: var(--card-ink);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  font-weight: 500;
+  line-height: 1.3;
+  box-shadow: var(--shadow);
+}
+
+.answer-card:hover:not(:disabled) {
+  background: #fff;
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.answer-card.yours {
+  background: #e6e2d6;
+  color: #55524a;
+}
+
+.answer-note {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a8579;
+}
+
+.standings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.standings li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.15rem 0.75rem;
+  align-items: baseline;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.standings li.won {
+  border-color: rgba(232, 195, 122, 0.6);
+  background: rgba(232, 195, 122, 0.12);
+}
+
+.standing-votes {
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.standing-card {
+  font-weight: 500;
+}
+
+.standings li .small {
+  grid-column: 2;
+}
+
 /* ------------------------------------------------------------------ prose */
 
 .prose h1 {

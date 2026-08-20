@@ -29,3 +29,19 @@ Gotta monetize and entertain somehow
 ## Deception Deck
 
 A la Secret Hitler, Werewolf, Mafia, The Resistance: Avalon
+
+## Hommlike
+
+See email `Hommlike`
+
+## Rage Game
+
+Similar to Hero War: https://drive.google.com/drive/folders/1Y0NKVRxFzIbwm7OBOCGq4aXS2mW72pt_
+
+## Login w Google, monetization, user polls, expansions
+
+modes/expansions for cards against AI: adult humor pack, custom cards, custom decks, order a physical set, unlockable card back support and ability to order a physical copy
+
+## Cards Against AI + Expansions
+
+Do I need to be worried about copyright etc or is this different enough?
